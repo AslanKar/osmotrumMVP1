@@ -1,0 +1,6470 @@
+{
+  "meta": {
+    "product": "ОСМОТРУМ",
+    "config_name": "Config.DB",
+    "version": "5.5",
+    "generated_at": "2026-01-22",
+    "source_documents": [
+      {
+        "file": "ТЗ Осмотрум v.5.5.patched.v2.docx"
+      },
+      {
+        "file": "База даных для Осмотрума.docx",
+        "version": "5.0"
+      }
+    ],
+    "notes": [
+      "Списки: сортировка по алфавиту + специальные первые значения + общий хвост (только для явно перечисленных типов списков).",
+      "Значение 'Иное' поддерживает inline-ввод: значение хранится как объект {choice:'Иное', other:'...'} для сохранения резолва шаблонов.",
+      "Категория 'Остекление' повторяет набор полей Окно/Дверь как в 'Помещение' (с учётом различий справочников материалов).",
+      "Поля по стеклу для элемента 'Дверь' отображаются только при выборе материала 'Стекло'.",
+      "Размеры окна/двери добавлены после полей 'Тип окна' / 'Тип двери' (по уточнению пользователя)."
+    ]
+  },
+  "constraints": {
+    "photos": {
+      "min_per_damage_item": 1,
+      "max_per_damage_item": 10
+    },
+    "pdf": {
+      "default_act_number": "№1",
+      "act_date_source": "f_inspection_date"
+    },
+    "images": {
+      "max_long_side_px": 2560,
+      "target_max_bytes": 900000
+    }
+  },
+  "dictionaries": [
+    {
+      "id": "d_common_tail",
+      "label": "Общий хвост",
+      "items": [
+        {
+          "value": "Иное"
+        },
+        {
+          "value": "Не знаю / Затрудняюсь ответить"
+        }
+      ],
+      "ordering": {
+        "mode": "as_is",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_category",
+      "label": "Категория",
+      "items": [
+        {
+          "value": "Помещение"
+        },
+        {
+          "value": "Здание"
+        },
+        {
+          "value": "Мебель"
+        },
+        {
+          "value": "Остекление"
+        }
+      ],
+      "ordering": {
+        "mode": "as_is",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_damage_char_common",
+      "label": "Характер повреждений (Помещение / Здание / Мебель)",
+      "items": [
+        {
+          "value": "Деформация"
+        },
+        {
+          "value": "Загрязнение"
+        },
+        {
+          "value": "Набухание"
+        },
+        {
+          "value": "Намокание"
+        },
+        {
+          "value": "Обгорание"
+        },
+        {
+          "value": "Отслоение"
+        },
+        {
+          "value": "Разрушение"
+        },
+        {
+          "value": "Трещина"
+        },
+        {
+          "value": "Иное"
+        }
+      ],
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_damage_char_glazing",
+      "label": "Характер повреждений (Остекление)",
+      "items": [
+        {
+          "value": "Запотевание"
+        },
+        {
+          "value": "Разрушение"
+        },
+        {
+          "value": "Скол"
+        },
+        {
+          "value": "Трещина"
+        },
+        {
+          "value": "Царапина"
+        },
+        {
+          "value": "Иное"
+        }
+      ],
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wood_species",
+      "label": "Породы дерева",
+      "items": [
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        }
+      ],
+      "dict_type": "Детализация",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_metal_details",
+      "label": "Детализация (металл)",
+      "items": [
+        {
+          "value": "алюминий"
+        },
+        {
+          "value": "сталь"
+        }
+      ],
+      "dict_type": "Детализация",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_unit_m",
+      "label": "Единица измерения",
+      "items": [
+        {
+          "value": "м"
+        }
+      ],
+      "ordering": {
+        "mode": "as_is",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_unit_cm_m",
+      "label": "Единица измерения",
+      "items": [
+        {
+          "value": "см"
+        },
+        {
+          "value": "м"
+        }
+      ],
+      "ordering": {
+        "mode": "as_is",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_unit_mm",
+      "label": "Единица измерения",
+      "items": [
+        {
+          "value": "мм"
+        }
+      ],
+      "ordering": {
+        "mode": "as_is",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_element_room",
+      "label": "Элемент (Помещение)",
+      "items": [
+        {
+          "value": "Потолок"
+        },
+        {
+          "value": "Стена"
+        },
+        {
+          "value": "Пол"
+        },
+        {
+          "value": "Окно"
+        },
+        {
+          "value": "Дверь"
+        }
+      ],
+      "dict_type": "Элемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_element_building",
+      "label": "Элемент (Здание)",
+      "items": [
+        {
+          "value": "Фасад"
+        },
+        {
+          "value": "Крыша"
+        },
+        {
+          "value": "Архитектурные элементы"
+        },
+        {
+          "value": "Конструктивные элементы"
+        }
+      ],
+      "dict_type": "Элемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_element_glazing",
+      "label": "Элемент (Остекление)",
+      "items": [
+        {
+          "value": "Дверь"
+        },
+        {
+          "value": "Окно"
+        }
+      ],
+      "dict_type": "Элемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_room_ceiling_subelement",
+      "label": "Подэлемент (Потолок)",
+      "items": [
+        {
+          "value": "Армстронг"
+        },
+        {
+          "value": "Вагонка"
+        },
+        {
+          "value": "Декоративная штукатурка"
+        },
+        {
+          "value": "Кассетный потолок"
+        },
+        {
+          "value": "Лакокрасочное покрытие"
+        },
+        {
+          "value": "Натяжной потолок"
+        },
+        {
+          "value": "Обои"
+        },
+        {
+          "value": "Плинтус потолочный"
+        },
+        {
+          "value": "Побелка"
+        },
+        {
+          "value": "Подвесной потолок"
+        },
+        {
+          "value": "Потолочная плитка"
+        },
+        {
+          "value": "Реечный потолок"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_room_wall_subelement",
+      "label": "Подэлемент (Стена)",
+      "items": [
+        {
+          "value": "Дверные откосы"
+        },
+        {
+          "value": "Оконные откосы"
+        },
+        {
+          "value": "Стеновые панели"
+        },
+        {
+          "value": "Ламинат"
+        },
+        {
+          "value": "Декоративная штукатурка"
+        },
+        {
+          "value": "Декоративный камень"
+        },
+        {
+          "value": "Лакокрасочное покрытие"
+        },
+        {
+          "value": "Обои"
+        },
+        {
+          "value": "Плитка"
+        },
+        {
+          "value": "Побелка"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_room_floor_subelement",
+      "label": "Подэлемент (Пол)",
+      "items": [
+        {
+          "value": "Ковролин"
+        },
+        {
+          "value": "Линолеум"
+        },
+        {
+          "value": "Плинтус напольный"
+        },
+        {
+          "value": "Плитка"
+        },
+        {
+          "value": "Паркет"
+        },
+        {
+          "value": "Ламинат"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_armstrong_material",
+      "label": "Материал (Потолок: Армстронг)",
+      "items": [
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Минеральное волокно"
+        },
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Стекло"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_decorplaster_view",
+      "label": "Вид (Потолок: Декоративная штукатурка)",
+      "items": [
+        {
+          "value": "Акриловая"
+        },
+        {
+          "value": "Минеральная"
+        },
+        {
+          "value": "Силикатная"
+        },
+        {
+          "value": "Силиконовая"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_cassette_material",
+      "label": "Материал (Потолок: Кассетный потолок)",
+      "items": [
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Минеральное волокно"
+        },
+        {
+          "value": "ПВС сетка"
+        },
+        {
+          "value": "Стеклянный"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_paint_view",
+      "label": "Вид (Потолок: Лакокрасочное покрытие)",
+      "items": [
+        {
+          "value": "Акриловое"
+        },
+        {
+          "value": "Водоэмульсионное"
+        },
+        {
+          "value": "Известковое"
+        },
+        {
+          "value": "Резиновое"
+        },
+        {
+          "value": "Силикатное"
+        },
+        {
+          "value": "Силиконовое"
+        },
+        {
+          "value": "Силоксановое"
+        },
+        {
+          "value": "Фактурное"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_stretch_view",
+      "label": "Вид (Потолок: Натяжной потолок)",
+      "items": [
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Пленка"
+        },
+        {
+          "value": "Тканевый"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_stretch_texture",
+      "label": "Фактура (Потолок: Натяжной потолок)",
+      "items": [
+        {
+          "value": "Матовый"
+        },
+        {
+          "value": "Глянцевый"
+        }
+      ],
+      "dict_type": "Фактура",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_wallpaper_type",
+      "label": "Тип (Потолок: Обои)",
+      "items": [
+        {
+          "value": "Бумажные"
+        },
+        {
+          "value": "Виниловые"
+        },
+        {
+          "value": "Моющиеся"
+        },
+        {
+          "value": "Под покраску"
+        },
+        {
+          "value": "Стеклохолст"
+        },
+        {
+          "value": "Флизилиновые"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_plinth_material",
+      "label": "Материал (Потолок: Плинтус потолочный)",
+      "items": [
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Пенопласт"
+        },
+        {
+          "value": "Полиуретан"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_whitewash_view",
+      "label": "Вид (Потолок: Побелка)",
+      "items": [
+        {
+          "value": "Водоэмульсионная"
+        },
+        {
+          "value": "Известковая"
+        },
+        {
+          "value": "Меловая"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_suspended_type",
+      "label": "Тип (Потолок: Подвесной потолок)",
+      "items": [
+        {
+          "value": "Гипсокартонный"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_tile_material",
+      "label": "Материал (Потолок: Потолочная плитка)",
+      "items": [
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "Минеральное волокно"
+        },
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Пенополистирол"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_ceiling_rack_material",
+      "label": "Материал (Потолок: Реечный потолок)",
+      "items": [
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "ПВХ"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_slopes_material",
+      "label": "Материал (Стена: откосы)",
+      "items": [
+        {
+          "value": "Гипсокартон"
+        },
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "ДСП"
+        },
+        {
+          "value": "МДФ"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        },
+        {
+          "value": "Сэндвич-панель"
+        },
+        {
+          "value": "Штукатурка"
+        },
+        {
+          "value": "Плитка"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_panels_material",
+      "label": "Материал (Стена: Стеновые панели)",
+      "items": [
+        {
+          "value": "Гипс"
+        },
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "ДСП"
+        },
+        {
+          "value": "Камень"
+        },
+        {
+          "value": "МДФ"
+        },
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Стекло"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_laminate_view",
+      "label": "Вид (Стена: Ламинат)",
+      "items": [
+        {
+          "value": "HDF"
+        },
+        {
+          "value": "LVT"
+        },
+        {
+          "value": "SPC"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_laminate_class",
+      "label": "Класс ламината",
+      "items": [
+        {
+          "value": "21 (бытовой)"
+        },
+        {
+          "value": "22 (бытовой)"
+        },
+        {
+          "value": "23 (бытовой)"
+        },
+        {
+          "value": "31 (коммерческий)"
+        },
+        {
+          "value": "32 (коммерческий)"
+        },
+        {
+          "value": "33 (коммерческий)"
+        },
+        {
+          "value": "34 (коммерческий)"
+        }
+      ],
+      "dict_type": "Класс ламината",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_decorplaster_view",
+      "label": "Вид (Стена: Декоративная штукатурка)",
+      "items": [
+        {
+          "value": "Минеральная"
+        },
+        {
+          "value": "Акриловая"
+        },
+        {
+          "value": "Силикатная"
+        },
+        {
+          "value": "Силиконовая"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_paint_view",
+      "label": "Вид (Стена: Лакокрасочное покрытие)",
+      "items": [
+        {
+          "value": "Акриловое"
+        },
+        {
+          "value": "Водоэмульсионное"
+        },
+        {
+          "value": "Силикатное"
+        },
+        {
+          "value": "Известковое"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_wallpaper_type",
+      "label": "Тип (Стена: Обои)",
+      "items": [
+        {
+          "value": "Бумажные"
+        },
+        {
+          "value": "Виниловые"
+        },
+        {
+          "value": "Под покраску"
+        },
+        {
+          "value": "Флизилиновые"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_tile_view",
+      "label": "Вид (Плитка)",
+      "items": [
+        {
+          "value": "Керамическая"
+        },
+        {
+          "value": "Керамогранит"
+        },
+        {
+          "value": "Клинкерная"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_wall_whitewash_type",
+      "label": "Тип (Стена: Побелка)",
+      "items": [
+        {
+          "value": "Водоэмульсионная"
+        },
+        {
+          "value": "Известковая"
+        },
+        {
+          "value": "Меловая"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_floor_carpet_type",
+      "label": "Тип (Пол: Ковролин)",
+      "items": [
+        {
+          "value": "Джутовый"
+        },
+        {
+          "value": "Латексный"
+        },
+        {
+          "value": "Резиновый"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_floor_lino_type",
+      "label": "Тип (Пол: Линолеум)",
+      "items": [
+        {
+          "value": "Алкидный"
+        },
+        {
+          "value": "Натуральный"
+        },
+        {
+          "value": "ПВХ"
+        },
+        {
+          "value": "Резиновый"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_floor_plinth_material",
+      "label": "Материал (Пол: Плинтус напольный)",
+      "items": [
+        {
+          "value": "Береза"
+        },
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Клен"
+        },
+        {
+          "value": "Лиственница"
+        },
+        {
+          "value": "МДФ"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "ПВХ"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_floor_parquet_view",
+      "label": "Вид (Пол: Паркет)",
+      "items": [
+        {
+          "value": "Наборный"
+        },
+        {
+          "value": "Штучный"
+        },
+        {
+          "value": "Щитовой"
+        },
+        {
+          "value": "Доска"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_floor_laminate_details",
+      "label": "Детали (Пол: Ламинат)",
+      "items": [
+        {
+          "value": "HDF"
+        },
+        {
+          "value": "LVT"
+        },
+        {
+          "value": "SPC"
+        }
+      ],
+      "dict_type": "Детализация",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_room_window_material",
+      "label": "Материал (Помещение: Окно)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_room_door_material",
+      "label": "Материал (Помещение: Дверь)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        },
+        {
+          "value": "Стекло"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_window_type",
+      "label": "Тип окна",
+      "items": [
+        {
+          "value": "Распашное"
+        },
+        {
+          "value": "Раздвижное"
+        },
+        {
+          "value": "Панорамное"
+        },
+        {
+          "value": "Распашное безрамное"
+        },
+        {
+          "value": "Раздвижное безрамное"
+        },
+        {
+          "value": "Панорамное безрамное"
+        }
+      ],
+      "dict_type": "Тип окна",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_door_type",
+      "label": "Тип двери",
+      "items": [
+        {
+          "value": "Распашная"
+        },
+        {
+          "value": "Раздвижная"
+        },
+        {
+          "value": "Распашная безрамная"
+        },
+        {
+          "value": "Раздвижная безрамная"
+        }
+      ],
+      "dict_type": "Тип двери",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_glass_type_window",
+      "label": "Тип стекла (Окно)",
+      "items": [
+        {
+          "value": "Закаленное"
+        },
+        {
+          "value": "Ударопрочное"
+        },
+        {
+          "value": "Бронированное"
+        },
+        {
+          "value": "Стандартное"
+        }
+      ],
+      "dict_type": "Тип стекла",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_glass_type_door_room",
+      "label": "Тип стекла (Дверь: Помещение)",
+      "items": [
+        {
+          "value": "Закаленное"
+        },
+        {
+          "value": "Ударопрочное"
+        },
+        {
+          "value": "Бронированное"
+        }
+      ],
+      "dict_type": "Тип стекла",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_glass_type_door_glazing",
+      "label": "Тип стекла (Дверь: Остекление)",
+      "items": [
+        {
+          "value": "Закаленное"
+        },
+        {
+          "value": "Ударопрочное"
+        },
+        {
+          "value": "Бронированное"
+        },
+        {
+          "value": "Стандартное"
+        }
+      ],
+      "dict_type": "Тип стекла",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_cameras",
+      "label": "Кол-во камер",
+      "items": [
+        {
+          "value": "Бескамерное"
+        },
+        {
+          "value": "Однокамерное"
+        },
+        {
+          "value": "Двухкамерное"
+        }
+      ],
+      "dict_type": "Кол-во камер",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_film_type",
+      "label": "Вид пленки",
+      "items": [
+        {
+          "value": "Солнцезащитная"
+        },
+        {
+          "value": "Энергосберегающая"
+        },
+        {
+          "value": "Противоударная"
+        },
+        {
+          "value": "Без пленки"
+        }
+      ],
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_glazing_window_material",
+      "label": "Материал (Остекление: Окно)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        },
+        {
+          "value": "Стекло"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_glazing_door_material",
+      "label": "Материал (Остекление: Дверь)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        },
+        {
+          "value": "Стекло"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_building_facade_subelement",
+      "label": "Подэлемент (Фасад)",
+      "items": [
+        {
+          "value": "Вентилируемый фасад"
+        },
+        {
+          "value": "Обшивка"
+        },
+        {
+          "value": "Облицовка"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_vent_cladding",
+      "label": "Облицовка (Вентилируемый фасад)",
+      "items": [
+        {
+          "value": "Керамогранит"
+        },
+        {
+          "value": "Клинкерная плитка"
+        },
+        {
+          "value": "Металлокассеты"
+        },
+        {
+          "value": "Рейки"
+        },
+        {
+          "value": "Фиброцемент"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Облицовка",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_vent_frame",
+      "label": "Каркас (Вентилируемый фасад)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Комбинированный"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Каркас",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_vent_insulation",
+      "label": "Утеплитель (Вентилируемый фасад)",
+      "items": [
+        {
+          "value": "Минеральная вата"
+        },
+        {
+          "value": "Пенополиуретан (ППУ)"
+        },
+        {
+          "value": "Экструзионный пенополистирол (ЭППС)"
+        },
+        {
+          "value": "Керамзит"
+        },
+        {
+          "value": "Нет утеплителя"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Утеплитель",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_sheathing_view",
+      "label": "Вид (Фасад: Обшивка)",
+      "items": [
+        {
+          "value": "Вагонка"
+        },
+        {
+          "value": "Тес"
+        },
+        {
+          "value": "Имитация бруса"
+        },
+        {
+          "value": "Термодревисина"
+        },
+        {
+          "value": "Сайдинг"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_sheathing_vagonka_material",
+      "label": "Материал (Фасад: Обшивка: Вагонка)",
+      "items": [
+        {
+          "value": "Дуб"
+        },
+        {
+          "value": "Ель"
+        },
+        {
+          "value": "Сосна"
+        },
+        {
+          "value": "Ясень"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_sheathing_tes_material",
+      "label": "Материал (Фасад: Обшивка: Тес)",
+      "items": [
+        {
+          "value": "Сосна"
+        },
+        {
+          "value": "Ясень"
+        },
+        {
+          "value": "Лиственница"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_sheathing_thermo_material",
+      "label": "Материал (Фасад: Обшивка: Термодревисина)",
+      "items": [
+        {
+          "value": "Сосна"
+        },
+        {
+          "value": "Ясень"
+        },
+        {
+          "value": "Дуб"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_siding_type",
+      "label": "Тип (Фасад: Обшивка: Сайдинг)",
+      "items": [
+        {
+          "value": "Акриловый"
+        },
+        {
+          "value": "Виниловый"
+        },
+        {
+          "value": "Металлический"
+        },
+        {
+          "value": "Фиброцементный"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_cladding_material",
+      "label": "Материал (Фасад: Облицовка)",
+      "items": [
+        {
+          "value": "Декоративный камень"
+        },
+        {
+          "value": "Кирпич"
+        },
+        {
+          "value": "Фасадная плитка"
+        },
+        {
+          "value": "Декоративная штукатурка"
+        },
+        {
+          "value": "Лакокрасочное покрытие"
+        },
+        {
+          "value": "Побелка"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_tile_type",
+      "label": "Тип (Фасадная плитка)",
+      "items": [
+        {
+          "value": "Агломерат"
+        },
+        {
+          "value": "Бетонная"
+        },
+        {
+          "value": "Керамическая"
+        },
+        {
+          "value": "Керамогранит"
+        },
+        {
+          "value": "Клинкерная"
+        },
+        {
+          "value": "Терракотовая"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_plaster_type",
+      "label": "Тип (Декоративная штукатурка: фасад)",
+      "items": [
+        {
+          "value": "Акриловая"
+        },
+        {
+          "value": "Минеральная"
+        },
+        {
+          "value": "Силикатная"
+        },
+        {
+          "value": "Силиконовая"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_paint_type",
+      "label": "Тип (Лакокрасочное покрытие: фасад)",
+      "items": [
+        {
+          "value": "Акриловое"
+        },
+        {
+          "value": "Водоэмульсионное"
+        },
+        {
+          "value": "Силикатное"
+        },
+        {
+          "value": "Известковое"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_facade_whitewash_type",
+      "label": "Тип (Побелка: фасад)",
+      "items": [
+        {
+          "value": "Водоэмульсионная"
+        },
+        {
+          "value": "Известковая"
+        },
+        {
+          "value": "Меловая"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_building_roof_subelement",
+      "label": "Подэлемент (Крыша)",
+      "items": [
+        {
+          "value": "Кровля"
+        },
+        {
+          "value": "Водосточная система"
+        },
+        {
+          "value": "Снегозадержатели"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_roof_view",
+      "label": "Вид (Кровля)",
+      "items": [
+        {
+          "value": "Двухскатная"
+        },
+        {
+          "value": "Мансардная"
+        },
+        {
+          "value": "Вальмовая"
+        },
+        {
+          "value": "Плоская"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_roof_covering",
+      "label": "Покрытие (Кровля)",
+      "items": [
+        {
+          "value": "Мягкая кровля"
+        },
+        {
+          "value": "Металлочерепица"
+        },
+        {
+          "value": "Шифер"
+        },
+        {
+          "value": "Профнастил"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Покрытие",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_roof_hydro",
+      "label": "Гидро/Пароизоляция (Кровля)",
+      "items": [
+        {
+          "value": "Мембрана"
+        },
+        {
+          "value": "Пленка"
+        },
+        {
+          "value": "Рубероид"
+        },
+        {
+          "value": "Нет изоляции"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_roof_insulation",
+      "label": "Утеплитель (Кровля)",
+      "items": [
+        {
+          "value": "Минеральная вата"
+        },
+        {
+          "value": "Пенополиуретан (ППУ)"
+        },
+        {
+          "value": "Экструзионный пенополистирол (ЭППС)"
+        },
+        {
+          "value": "Керамзит"
+        },
+        {
+          "value": "Нет утеплителя"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Утеплитель",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_roof_rafters_material",
+      "label": "Материал (Стропильная система)",
+      "items": [
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Нет повреждений"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_gutter_material",
+      "label": "Материал (Водосточная система)",
+      "items": [
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_snowguards_type",
+      "label": "Тип (Снегозадержатели)",
+      "items": [
+        {
+          "value": "Нет снегодержателей"
+        },
+        {
+          "value": "Трубчатые"
+        },
+        {
+          "value": "Решетчатые"
+        },
+        {
+          "value": "Уголковые"
+        },
+        {
+          "value": "Бугельные"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_building_arch_subelement",
+      "label": "Подэлемент (Архитектурные элементы)",
+      "items": [
+        {
+          "value": "Карнизы"
+        },
+        {
+          "value": "Наличники"
+        },
+        {
+          "value": "Решетки"
+        },
+        {
+          "value": "Ставни"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_arch_cornice_material",
+      "label": "Материал (Карнизы)",
+      "items": [
+        {
+          "value": "Бетон"
+        },
+        {
+          "value": "Пенопласт"
+        },
+        {
+          "value": "Полиуретан"
+        },
+        {
+          "value": "ЭППС"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_arch_platband_material",
+      "label": "Материал (Наличники)",
+      "items": [
+        {
+          "value": "Бетон"
+        },
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Камень"
+        },
+        {
+          "value": "Металл"
+        },
+        {
+          "value": "Пластик"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_arch_grille_view",
+      "label": "Вид (Решетки)",
+      "items": [
+        {
+          "value": "Вентиляционные"
+        },
+        {
+          "value": "Декоративные"
+        },
+        {
+          "value": "Оконные"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_arch_shutter_view",
+      "label": "Вид (Ставни)",
+      "items": [
+        {
+          "value": "Глухие"
+        },
+        {
+          "value": "Сквозные"
+        },
+        {
+          "value": "Складные"
+        }
+      ],
+      "dict_type": "Вид",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_building_construct_subelement",
+      "label": "Подэлемент (Конструктивные элементы)",
+      "items": [
+        {
+          "value": "Стены"
+        },
+        {
+          "value": "Перекрытия"
+        },
+        {
+          "value": "Ступени"
+        },
+        {
+          "value": "Фундамент"
+        },
+        {
+          "value": "Цоколь"
+        }
+      ],
+      "dict_type": "Подэлемент",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_construct_walls_material",
+      "label": "Материал (Конструктив: Стены)",
+      "items": [
+        {
+          "value": "Газоблок"
+        },
+        {
+          "value": "Пеноблок"
+        },
+        {
+          "value": "Бревно"
+        },
+        {
+          "value": "Брус"
+        },
+        {
+          "value": "Каркас"
+        },
+        {
+          "value": "Кирпич"
+        },
+        {
+          "value": "Монолит"
+        },
+        {
+          "value": "Панели ЖБ"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_construct_floors_material",
+      "label": "Материал (Конструктив: Перекрытия)",
+      "items": [
+        {
+          "value": "Деревянные балки"
+        },
+        {
+          "value": "ЖБ плита"
+        },
+        {
+          "value": "Монолит"
+        },
+        {
+          "value": "Смешанное"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_construct_steps_material",
+      "label": "Материал (Конструктив: Ступени)",
+      "items": [
+        {
+          "value": "Бетон"
+        },
+        {
+          "value": "Дерево"
+        },
+        {
+          "value": "Камень"
+        },
+        {
+          "value": "Металл"
+        }
+      ],
+      "dict_type": "Материал",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_construct_foundation_type",
+      "label": "Тип (Конструктив: Фундамент)",
+      "items": [
+        {
+          "value": "Ленточный"
+        },
+        {
+          "value": "Плита"
+        },
+        {
+          "value": "Свайный"
+        },
+        {
+          "value": "Блочный"
+        }
+      ],
+      "dict_type": "Тип",
+      "tail_id": "d_common_tail",
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    },
+    {
+      "id": "d_construct_socle_finish",
+      "label": "Отделка (Конструктив: Цоколь)",
+      "items": [
+        {
+          "value": "Бетон"
+        },
+        {
+          "value": "Камень"
+        },
+        {
+          "value": "Кирпич"
+        },
+        {
+          "value": "Панели"
+        },
+        {
+          "value": "Штукатурка"
+        }
+      ],
+      "ordering": {
+        "mode": "alpha_auto",
+        "special_first_values": [
+          "Нет повреждений",
+          "Нет утеплителя",
+          "Нет изоляции",
+          "Без пленки"
+        ]
+      }
+    }
+  ],
+  "fields": [
+    {
+      "id": "f_insurer",
+      "label": "Страхователь",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "f_insurer_rep",
+      "label": "Представитель страхователя (ФИО)",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "f_policy_number",
+      "label": "Номер договора страхования",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "f_policy_date",
+      "label": "Дата заключения договора страхования",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "f_inspection_address",
+      "label": "Адрес места осмотра",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "f_event_circumstances",
+      "label": "Описание обстоятельств и причины события",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "f_event_date",
+      "label": "Дата события",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "f_inspection_date",
+      "label": "Дата осмотра",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "f_damage_category",
+      "label": "Категория",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_category"
+    },
+    {
+      "id": "f_damage_element",
+      "label": "Элемент",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_damage_subelement",
+      "label": "Подэлемент",
+      "type": "select",
+      "required": false,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_material",
+      "label": "Материал",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_view",
+      "label": "Вид",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_type",
+      "label": "Тип",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_texture",
+      "label": "Фактура",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_details",
+      "label": "Детализация",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_laminate_class",
+      "label": "Класс ламината",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_laminate_class",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_window_material",
+      "label": "Материал (окно)",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_window_type",
+      "label": "Тип окна",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_window_type",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_window_size",
+      "label": "Размер окна",
+      "type": "group_xy",
+      "required": true,
+      "axis_labels": {
+        "x": "Высота",
+        "y": "Ширина"
+      },
+      "unit_options_dictionary_id": "d_unit_cm_m"
+    },
+    {
+      "id": "f_door_material",
+      "label": "Материал (дверь)",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_door_type",
+      "label": "Тип двери",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_door_type",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_door_size",
+      "label": "Размер двери",
+      "type": "group_xy",
+      "required": true,
+      "axis_labels": {
+        "x": "Высота",
+        "y": "Ширина"
+      },
+      "unit_options_dictionary_id": "d_unit_cm_m"
+    },
+    {
+      "id": "f_glass_type",
+      "label": "Тип стекла",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_cameras",
+      "label": "Кол-во камер",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_cameras",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_film_type",
+      "label": "Вид пленки",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_film_type"
+    },
+    {
+      "id": "f_glasspack_size",
+      "label": "Размер стеклопакета",
+      "type": "group_xy",
+      "required": true,
+      "axis_labels": {
+        "x": "Высота",
+        "y": "Ширина"
+      },
+      "unit_options_dictionary_id": "d_unit_cm_m"
+    },
+    {
+      "id": "f_glass_thickness_mm",
+      "label": "Толщина стекла (мм)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "id": "f_glass_formula",
+      "label": "Формула стекла",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "f_damage_char",
+      "label": "Характер повреждения",
+      "type": "select",
+      "required": true,
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_damage_size",
+      "label": "Размер повреждения",
+      "type": "group_xy",
+      "required": true,
+      "axis_labels": {
+        "x": "Длина",
+        "y": "Ширина"
+      },
+      "unit_options_dictionary_id": "d_unit_cm_m"
+    },
+    {
+      "id": "f_room_size",
+      "label": "Размер помещения",
+      "type": "group_xyz",
+      "required": true,
+      "axis_labels": {
+        "x": "Длина",
+        "y": "Ширина",
+        "z": "Высота"
+      },
+      "unit_static": "м"
+    },
+    {
+      "id": "f_year_last_caprepair",
+      "label": "Год последнего капремонта",
+      "type": "number",
+      "required": true,
+      "integer": true
+    },
+    {
+      "id": "f_door_openings_count",
+      "label": "Кол-во дверных проемов",
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "integer": true
+    },
+    {
+      "id": "f_window_openings_count",
+      "label": "Кол-во оконных проемов",
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "integer": true
+    },
+    {
+      "id": "f_year_built",
+      "label": "Год постройки здания",
+      "type": "number",
+      "required": true,
+      "integer": true
+    },
+    {
+      "id": "f_photos",
+      "label": "Фотофиксация",
+      "type": "photos",
+      "required": true,
+      "max_count": 10
+    },
+    {
+      "id": "f_facade_cladding",
+      "label": "Облицовка",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_facade_vent_cladding",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_facade_frame",
+      "label": "Каркас",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_facade_vent_frame",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_facade_insulation",
+      "label": "Утеплитель",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_facade_vent_insulation",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_roof_view",
+      "label": "Вид",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_roof_view",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_roof_covering",
+      "label": "Покрытие",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_roof_covering",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_roof_hydro",
+      "label": "Гидро/Пароизоляция",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_roof_hydro"
+    },
+    {
+      "id": "f_roof_insulation",
+      "label": "Утеплитель",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_roof_insulation",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_roof_rafters_material",
+      "label": "Стропильная система",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_roof_rafters_material",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_gutter_material",
+      "label": "Материал",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_gutter_material",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_snowguards_type",
+      "label": "Тип",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_snowguards_type",
+      "allow_other_choice": true,
+      "other_choice_value": "Иное",
+      "other_value_mode": "inline",
+      "value_storage": "choice_or_other_object",
+      "other_object_keys": {
+        "choice": "choice",
+        "other": "other"
+      }
+    },
+    {
+      "id": "f_furniture_name",
+      "label": "Наименование",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "f_furniture_brand",
+      "label": "Марка",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "f_furniture_year",
+      "label": "Год выпуска",
+      "type": "number",
+      "required": false,
+      "integer": true
+    },
+    {
+      "id": "f_furniture_info",
+      "label": "Доп. информация",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "f_socle_finish",
+      "label": "Отделка",
+      "type": "select",
+      "required": true,
+      "dictionary_id": "d_construct_socle_finish"
+    }
+  ],
+  "inventory": {
+    "damage_item": {
+      "selectors": {
+        "category": {
+          "field_id": "f_damage_category",
+          "dictionary_id": "d_category"
+        },
+        "element": {
+          "field_id": "f_damage_element",
+          "dictionary_by_category": {
+            "Помещение": "d_element_room",
+            "Здание": "d_element_building",
+            "Остекление": "d_element_glazing"
+          },
+          "allow_other_choice": true
+        },
+        "subelement": {
+          "field_id": "f_damage_subelement",
+          "dictionary_by_category_element": {
+            "Помещение|Потолок": "d_room_ceiling_subelement",
+            "Помещение|Стена": "d_room_wall_subelement",
+            "Помещение|Пол": "d_room_floor_subelement",
+            "Здание|Фасад": "d_building_facade_subelement",
+            "Здание|Крыша": "d_building_roof_subelement",
+            "Здание|Архитектурные элементы": "d_building_arch_subelement",
+            "Здание|Конструктивные элементы": "d_building_construct_subelement"
+          },
+          "allow_other_choice": true
+        }
+      },
+      "templates": [
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Армстронг"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_ceiling_armstrong_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Вагонка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_wood_species",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Декоративная штукатурка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_ceiling_decorplaster_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Кассетный потолок"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_ceiling_cassette_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Лакокрасочное покрытие"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_ceiling_paint_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Натяжной потолок"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_ceiling_stretch_view",
+              "required": true
+            },
+            {
+              "field_id": "f_texture",
+              "dictionary_id": "d_ceiling_stretch_texture",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Обои"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_ceiling_wallpaper_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Плинтус потолочный"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_ceiling_plinth_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Побелка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_ceiling_whitewash_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Подвесной потолок"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_ceiling_suspended_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Потолочная плитка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_ceiling_tile_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling__",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement": "Реечный потолок"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_ceiling_rack_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Дверные откосы"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_wall_slopes_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Оконные откосы"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_wall_slopes_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Стеновые панели"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_wall_panels_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Ламинат"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_wall_laminate_view",
+              "required": true
+            },
+            {
+              "field_id": "f_laminate_class",
+              "dictionary_id": "d_laminate_class",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Декоративная штукатурка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_wall_decorplaster_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Декоративный камень"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Лакокрасочное покрытие"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_wall_paint_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Обои"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_wall_wallpaper_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Плитка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_tile_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall__",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement": "Побелка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_wall_whitewash_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Ковролин"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_floor_carpet_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Линолеум"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_floor_lino_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Плинтус напольный"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_floor_plinth_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Плитка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_tile_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Паркет"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_floor_parquet_view",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_wood_species",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor__",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement": "Ламинат"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_details",
+              "dictionary_id": "d_floor_laminate_details",
+              "required": true
+            },
+            {
+              "field_id": "f_laminate_class",
+              "dictionary_id": "d_laminate_class",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_window",
+          "when": {
+            "category": "Помещение",
+            "element": "Окно"
+          },
+          "fields": [
+            {
+              "field_id": "f_window_material",
+              "dictionary_id": "d_room_window_material",
+              "required": true
+            },
+            {
+              "field_id": "f_details",
+              "required": false
+            },
+            {
+              "field_id": "f_window_type",
+              "dictionary_id": "d_window_type",
+              "required": true
+            },
+            {
+              "field_id": "f_window_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_type",
+              "dictionary_id": "d_glass_type_window",
+              "required": true
+            },
+            {
+              "field_id": "f_cameras",
+              "dictionary_id": "d_cameras",
+              "required": true
+            },
+            {
+              "field_id": "f_film_type",
+              "dictionary_id": "d_film_type",
+              "required": true
+            },
+            {
+              "field_id": "f_glasspack_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_thickness_mm",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_formula",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_door",
+          "when": {
+            "category": "Помещение",
+            "element": "Дверь"
+          },
+          "fields": [
+            {
+              "field_id": "f_door_material",
+              "dictionary_id": "d_room_door_material",
+              "required": true
+            },
+            {
+              "field_id": "f_details",
+              "required": false
+            },
+            {
+              "field_id": "f_door_type",
+              "dictionary_id": "d_door_type",
+              "required": true
+            },
+            {
+              "field_id": "f_door_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_type",
+              "dictionary_id": "d_glass_type_door_room",
+              "required": false
+            },
+            {
+              "field_id": "f_cameras",
+              "dictionary_id": "d_cameras",
+              "required": false
+            },
+            {
+              "field_id": "f_film_type",
+              "dictionary_id": "d_film_type",
+              "required": false
+            },
+            {
+              "field_id": "f_glasspack_size",
+              "required": false
+            },
+            {
+              "field_id": "f_glass_thickness_mm",
+              "required": false
+            },
+            {
+              "field_id": "f_glass_formula",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_other_element",
+          "when": {
+            "category": "Помещение",
+            "element_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_facade_vent",
+          "when": {
+            "category": "Здание",
+            "element": "Фасад",
+            "subelement": "Вентилируемый фасад"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_facade_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_facade_cladding",
+              "dictionary_id": "d_facade_vent_cladding",
+              "required": true
+            },
+            {
+              "field_id": "f_facade_frame",
+              "dictionary_id": "d_facade_vent_frame",
+              "required": true
+            },
+            {
+              "field_id": "f_facade_insulation",
+              "dictionary_id": "d_facade_vent_insulation",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_facade_sheathing",
+          "when": {
+            "category": "Здание",
+            "element": "Фасад",
+            "subelement": "Обшивка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_facade_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_facade_sheathing_view",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "required": false
+            },
+            {
+              "field_id": "f_type",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_facade_cladding",
+          "when": {
+            "category": "Здание",
+            "element": "Фасад",
+            "subelement": "Облицовка"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_facade_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_facade_cladding_material",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_roof_roofing",
+          "when": {
+            "category": "Здание",
+            "element": "Крыша",
+            "subelement": "Кровля"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_roof_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_roof_view",
+              "dictionary_id": "d_roof_view",
+              "required": true
+            },
+            {
+              "field_id": "f_roof_covering",
+              "dictionary_id": "d_roof_covering",
+              "required": true
+            },
+            {
+              "field_id": "f_roof_hydro",
+              "dictionary_id": "d_roof_hydro",
+              "required": true
+            },
+            {
+              "field_id": "f_roof_insulation",
+              "dictionary_id": "d_roof_insulation",
+              "required": true
+            },
+            {
+              "field_id": "f_roof_rafters_material",
+              "dictionary_id": "d_roof_rafters_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_roof_gutter",
+          "when": {
+            "category": "Здание",
+            "element": "Крыша",
+            "subelement": "Водосточная система"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_roof_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_gutter_material",
+              "dictionary_id": "d_gutter_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_roof_snowguards",
+          "when": {
+            "category": "Здание",
+            "element": "Крыша",
+            "subelement": "Снегозадержатели"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_roof_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_snowguards_type",
+              "dictionary_id": "d_snowguards_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_arch_cornices",
+          "when": {
+            "category": "Здание",
+            "element": "Архитектурные элементы",
+            "subelement": "Карнизы"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_arch_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_arch_cornice_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_arch_platbands",
+          "when": {
+            "category": "Здание",
+            "element": "Архитектурные элементы",
+            "subelement": "Наличники"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_arch_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_arch_platband_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_arch_grilles",
+          "when": {
+            "category": "Здание",
+            "element": "Архитектурные элементы",
+            "subelement": "Решетки"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_arch_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_arch_grille_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_arch_shutters",
+          "when": {
+            "category": "Здание",
+            "element": "Архитектурные элементы",
+            "subelement": "Ставни"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_arch_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_view",
+              "dictionary_id": "d_arch_shutter_view",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_const_walls",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement": "Стены"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_construct_walls_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_const_floors",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement": "Перекрытия"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_construct_floors_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_const_steps",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement": "Ступени"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_material",
+              "dictionary_id": "d_construct_steps_material",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_const_foundation",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement": "Фундамент"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_type",
+              "dictionary_id": "d_construct_foundation_type",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_const_socle",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement": "Цоколь"
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_socle_finish",
+              "dictionary_id": "d_construct_socle_finish",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_glazing_window",
+          "when": {
+            "category": "Остекление",
+            "element": "Окно"
+          },
+          "fields": [
+            {
+              "field_id": "f_window_material",
+              "dictionary_id": "d_glazing_window_material",
+              "required": true
+            },
+            {
+              "field_id": "f_details",
+              "required": false
+            },
+            {
+              "field_id": "f_window_type",
+              "dictionary_id": "d_window_type",
+              "required": true
+            },
+            {
+              "field_id": "f_window_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_type",
+              "dictionary_id": "d_glass_type_window",
+              "required": true
+            },
+            {
+              "field_id": "f_cameras",
+              "dictionary_id": "d_cameras",
+              "required": true
+            },
+            {
+              "field_id": "f_film_type",
+              "dictionary_id": "d_film_type",
+              "required": true
+            },
+            {
+              "field_id": "f_glasspack_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_thickness_mm",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_formula",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_glazing",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_glazing_door",
+          "when": {
+            "category": "Остекление",
+            "element": "Дверь"
+          },
+          "fields": [
+            {
+              "field_id": "f_door_material",
+              "dictionary_id": "d_glazing_door_material",
+              "required": true
+            },
+            {
+              "field_id": "f_details",
+              "required": false
+            },
+            {
+              "field_id": "f_door_type",
+              "dictionary_id": "d_door_type",
+              "required": true
+            },
+            {
+              "field_id": "f_door_size",
+              "required": true
+            },
+            {
+              "field_id": "f_glass_type",
+              "dictionary_id": "d_glass_type_door_glazing",
+              "required": false
+            },
+            {
+              "field_id": "f_cameras",
+              "dictionary_id": "d_cameras",
+              "required": false
+            },
+            {
+              "field_id": "f_film_type",
+              "dictionary_id": "d_film_type",
+              "required": false
+            },
+            {
+              "field_id": "f_glasspack_size",
+              "required": false
+            },
+            {
+              "field_id": "f_glass_thickness_mm",
+              "required": false
+            },
+            {
+              "field_id": "f_glass_formula",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_glazing",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_glazing_other_element",
+          "when": {
+            "category": "Остекление",
+            "element_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_glazing",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_furniture",
+          "when": {
+            "category": "Мебель"
+          },
+          "fields": [
+            {
+              "field_id": "f_furniture_name",
+              "required": true
+            },
+            {
+              "field_id": "f_furniture_brand",
+              "required": false
+            },
+            {
+              "field_id": "f_furniture_year",
+              "required": false
+            },
+            {
+              "field_id": "f_furniture_info",
+              "required": false
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_ceiling_other_subelement",
+          "when": {
+            "category": "Помещение",
+            "element": "Потолок",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_ceiling_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_wall_other_subelement",
+          "when": {
+            "category": "Помещение",
+            "element": "Стена",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_wall_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_door_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_window_openings_count",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_room_floor_other_subelement",
+          "when": {
+            "category": "Помещение",
+            "element": "Пол",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_room_floor_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_room_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_other_element",
+          "when": {
+            "category": "Здание",
+            "element_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_facade_other_subelement",
+          "when": {
+            "category": "Здание",
+            "element": "Фасад",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_facade_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_roof_other_subelement",
+          "when": {
+            "category": "Здание",
+            "element": "Крыша",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_roof_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_arch_other_subelement",
+          "when": {
+            "category": "Здание",
+            "element": "Архитектурные элементы",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_arch_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "t_building_construct_other_subelement",
+          "when": {
+            "category": "Здание",
+            "element": "Конструктивные элементы",
+            "subelement_in": [
+              "Иное",
+              "Не знаю / Затрудняюсь ответить"
+            ]
+          },
+          "fields": [
+            {
+              "field_id": "f_damage_subelement",
+              "dictionary_id": "d_building_construct_subelement",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_char",
+              "dictionary_id": "d_damage_char_common",
+              "required": true
+            },
+            {
+              "field_id": "f_damage_size",
+              "required": true
+            },
+            {
+              "field_id": "f_year_built",
+              "required": true
+            },
+            {
+              "field_id": "f_year_last_caprepair",
+              "required": true
+            },
+            {
+              "field_id": "f_photos",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rules": [
+    {
+      "id": "r_damage_element_dictionary_by_category",
+      "when": {
+        "field": "f_damage_category"
+      },
+      "actions": [
+        {
+          "type": "set_dictionary",
+          "field_id": "f_damage_element",
+          "by_value": {
+            "Помещение": "d_element_room",
+            "Здание": "d_element_building",
+            "Остекление": "d_element_glazing"
+          },
+          "else": null
+        },
+        {
+          "type": "clear_fields",
+          "field_ids": [
+            "f_damage_element",
+            "f_damage_subelement"
+          ]
+        }
+      ],
+      "note": "При смене категории обновляется справочник элементов; значения элемента/подэлемента очищаются."
+    },
+    {
+      "id": "r_damage_subelement_dictionary_by_category_element",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element"
+        ]
+      },
+      "actions": [
+        {
+          "type": "set_dictionary_and_visibility",
+          "field_id": "f_damage_subelement",
+          "cases": [
+            {
+              "if": {
+                "category": "Помещение",
+                "element": "Потолок"
+              },
+              "dictionary_id": "d_room_ceiling_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Помещение",
+                "element": "Стена"
+              },
+              "dictionary_id": "d_room_wall_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Помещение",
+                "element": "Пол"
+              },
+              "dictionary_id": "d_room_floor_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад"
+              },
+              "dictionary_id": "d_building_facade_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Крыша"
+              },
+              "dictionary_id": "d_building_roof_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Архитектурные элементы"
+              },
+              "dictionary_id": "d_building_arch_subelement",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Конструктивные элементы"
+              },
+              "dictionary_id": "d_building_construct_subelement",
+              "visible": true,
+              "required": true
+            }
+          ],
+          "default": {
+            "visible": false,
+            "required": false,
+            "dictionary_id": null
+          }
+        },
+        {
+          "type": "clear_fields",
+          "field_ids": [
+            "f_damage_subelement"
+          ]
+        }
+      ],
+      "note": "Показывать/скрывать Подэлемент в зависимости от выбранного элемента."
+    },
+    {
+      "id": "r_clear_damage_size_on_selectors_change",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element",
+          "f_damage_subelement"
+        ]
+      },
+      "actions": [
+        {
+          "type": "clear_fields",
+          "field_ids": [
+            "f_damage_size"
+          ]
+        }
+      ],
+      "note": "При изменении Категории/Элемента/Подэлемента сбрасывать размеры повреждения, чтобы значения не переносились между разными объектами."
+    },
+    {
+      "id": "r_details_by_material_window",
+      "when": {
+        "field": "f_window_material"
+      },
+      "actions": [
+        {
+          "type": "set_dictionary_and_visibility",
+          "field_id": "f_details",
+          "cases": [
+            {
+              "if": {
+                "value": "Дерево"
+              },
+              "dictionary_id": "d_wood_species",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "value": "Металл"
+              },
+              "dictionary_id": "d_metal_details",
+              "visible": true,
+              "required": true
+            }
+          ],
+          "default": {
+            "visible": false,
+            "required": false,
+            "dictionary_id": null,
+            "clear": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "r_details_by_material_door",
+      "when": {
+        "field": "f_door_material"
+      },
+      "actions": [
+        {
+          "type": "set_dictionary_and_visibility",
+          "field_id": "f_details",
+          "cases": [
+            {
+              "if": {
+                "value": "Дерево"
+              },
+              "dictionary_id": "d_wood_species",
+              "visible": true,
+              "required": true
+            },
+            {
+              "if": {
+                "value": "Металл"
+              },
+              "dictionary_id": "d_metal_details",
+              "visible": true,
+              "required": true
+            }
+          ],
+          "default": {
+            "visible": false,
+            "required": false,
+            "dictionary_id": null,
+            "clear": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "r_room_door_glass_block_only_if_material_glass",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element",
+          "f_door_material"
+        ]
+      },
+      "actions": [
+        {
+          "type": "set_visibility_and_required",
+          "field_ids": [
+            "f_glass_type",
+            "f_cameras",
+            "f_film_type",
+            "f_glasspack_size",
+            "f_glass_thickness_mm",
+            "f_glass_formula"
+          ],
+          "if": {
+            "category": "Помещение",
+            "element": "Дверь",
+            "material": "Стекло"
+          },
+          "visible": true,
+          "required_fields": [
+            "f_glass_type",
+            "f_cameras",
+            "f_film_type",
+            "f_glasspack_size",
+            "f_glass_thickness_mm"
+          ],
+          "dictionary_overrides": {
+            "f_glass_type": "d_glass_type_door_room"
+          },
+          "else": {
+            "visible": false,
+            "clear": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "r_glazing_door_glass_block_only_if_material_glass",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element",
+          "f_door_material"
+        ]
+      },
+      "actions": [
+        {
+          "type": "set_visibility_and_required",
+          "field_ids": [
+            "f_glass_type",
+            "f_cameras",
+            "f_film_type",
+            "f_glasspack_size",
+            "f_glass_thickness_mm",
+            "f_glass_formula"
+          ],
+          "if": {
+            "category": "Остекление",
+            "element": "Дверь",
+            "material": "Стекло"
+          },
+          "visible": true,
+          "required_fields": [
+            "f_glass_type",
+            "f_cameras",
+            "f_film_type",
+            "f_glasspack_size",
+            "f_glass_thickness_mm"
+          ],
+          "dictionary_overrides": {
+            "f_glass_type": "d_glass_type_door_glazing"
+          },
+          "else": {
+            "visible": false,
+            "clear": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "r_building_facade_sheathing_view_drives_material_or_type",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element",
+          "f_damage_subelement",
+          "f_view"
+        ]
+      },
+      "actions": [
+        {
+          "type": "set_field_visibility_dictionary_required",
+          "cases": [
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Обшивка",
+                "view": "Вагонка"
+              },
+              "show": [
+                {
+                  "field_id": "f_material",
+                  "dictionary_id": "d_facade_sheathing_vagonka_material",
+                  "required": true
+                }
+              ],
+              "hide": [
+                "f_type"
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Обшивка",
+                "view": "Тес"
+              },
+              "show": [
+                {
+                  "field_id": "f_material",
+                  "dictionary_id": "d_facade_sheathing_tes_material",
+                  "required": true
+                }
+              ],
+              "hide": [
+                "f_type"
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Обшивка",
+                "view": "Термодревисина"
+              },
+              "show": [
+                {
+                  "field_id": "f_material",
+                  "dictionary_id": "d_facade_sheathing_thermo_material",
+                  "required": true
+                }
+              ],
+              "hide": [
+                "f_type"
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Обшивка",
+                "view": "Сайдинг"
+              },
+              "show": [
+                {
+                  "field_id": "f_type",
+                  "dictionary_id": "d_facade_siding_type",
+                  "required": true
+                }
+              ],
+              "hide": [
+                "f_material"
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Обшивка",
+                "view": "Имитация бруса"
+              },
+              "hide": [
+                "f_material",
+                "f_type"
+              ]
+            }
+          ],
+          "default": {
+            "hide": [
+              "f_material",
+              "f_type"
+            ]
+          }
+        }
+      ],
+      "note": "Для фасада/обшивки: материалы только для Вагонка/Тес/Термодревисина; тип только для Сайдинг."
+    },
+    {
+      "id": "r_building_facade_cladding_material_drives_type_dictionary",
+      "when": {
+        "fields": [
+          "f_damage_category",
+          "f_damage_element",
+          "f_damage_subelement",
+          "f_material"
+        ]
+      },
+      "actions": [
+        {
+          "type": "set_field_visibility_dictionary_required",
+          "cases": [
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Облицовка",
+                "material": "Фасадная плитка"
+              },
+              "show": [
+                {
+                  "field_id": "f_type",
+                  "dictionary_id": "d_facade_tile_type",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Облицовка",
+                "material": "Декоративная штукатурка"
+              },
+              "show": [
+                {
+                  "field_id": "f_type",
+                  "dictionary_id": "d_facade_plaster_type",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Облицовка",
+                "material": "Лакокрасочное покрытие"
+              },
+              "show": [
+                {
+                  "field_id": "f_type",
+                  "dictionary_id": "d_facade_paint_type",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "if": {
+                "category": "Здание",
+                "element": "Фасад",
+                "subelement": "Облицовка",
+                "material": "Побелка"
+              },
+              "show": [
+                {
+                  "field_id": "f_type",
+                  "dictionary_id": "d_facade_whitewash_type",
+                  "required": true
+                }
+              ]
+            }
+          ],
+          "default": {
+            "hide": [
+              "f_type"
+            ]
+          }
+        }
+      ],
+      "note": "Для фасада/облицовки: поле Тип появляется только для перечисленных материалов."
+    },
+    {
+      "id": "r_hide_element_selector_for_furniture",
+      "when": {
+        "field": "f_damage_category"
+      },
+      "actions": [
+        {
+          "type": "set_visibility_and_required",
+          "field_ids": ["f_damage_element"],
+          "if": {
+            "category": "Мебель"
+          },
+          "visible": false,
+          "else": {
+            "visible": true
+          },
+          "if_required": false,
+          "else_required": true
+        },
+        {
+          "type": "clear_fields",
+          "field_ids": [
+            "f_damage_element",
+            "f_damage_subelement"
+          ],
+          "if": {
+            "category": "Мебель"
+          }
+        }
+      ],
+      "note": "Для категории Мебель элемент/подэлемент не используются."
+    }
+  ],
+  "export": {
+    "pdf": {
+      "omit_values": [
+        "Нет повреждений"
+      ],
+      "header": [
+        {
+          "label": "Дата акта",
+          "source": "f_inspection_date"
+        },
+        {
+          "label": "№ акта",
+          "source_static": "№1"
+        },
+        {
+          "label": "Договор",
+          "fields": [
+            {
+              "field_id": "f_policy_date",
+              "label": "дата"
+            },
+            {
+              "field_id": "f_policy_number",
+              "label": "номер"
+            }
+          ]
+        },
+        {
+          "label": "Страхователь",
+          "field_id": "f_insurer"
+        },
+        {
+          "label": "Представитель страхователя",
+          "field_id": "f_insurer_rep"
+        },
+        {
+          "label": "Место осмотра",
+          "field_id": "f_inspection_address"
+        },
+        {
+          "label": "Описание обстоятельств и причины события",
+          "field_id": "f_event_circumstances"
+        },
+        {
+          "label": "Дата события",
+          "field_id": "f_event_date"
+        }
+      ],
+      "damage_item": {
+        "title_parts": [
+          "category",
+          "element",
+          "subelement"
+        ],
+        "fields_from_template": true,
+        "photos_layout": {
+          "columns": 2,
+          "rows_per_page": 4,
+          "max_photos": 10
+        }
+      }
+    }
+  },
+  "ui": {
+    "steps": [
+      {
+        "id": "step1",
+        "title": "Анкета",
+        "required_fields": [
+          "f_insurer",
+          "f_insurer_rep",
+          "f_policy_number",
+          "f_policy_date",
+          "f_inspection_address",
+          "f_event_circumstances",
+          "f_event_date",
+          "f_inspection_date"
+        ]
+      },
+      {
+        "id": "step2",
+        "title": "Повреждения",
+        "list_ref": "state.damage_items"
+      },
+      {
+        "id": "step3",
+        "title": "Добавление повреждения",
+        "inventory_ref": "damage_item"
+      },
+      {
+        "id": "step4",
+        "title": "Финализация",
+        "actions": [
+          "export_pdf",
+          "submit"
+        ]
+      }
+    ]
+  },
+  "state_schema": {
+    "damage_items": {
+      "type": "array",
+      "item": "damage_item"
+    },
+    "damage_item": {
+      "fields": [
+        "f_damage_category",
+        "f_damage_element",
+        "f_damage_subelement",
+        "f_material",
+        "f_view",
+        "f_type",
+        "f_texture",
+        "f_details",
+        "f_laminate_class",
+        "f_window_material",
+        "f_window_type",
+        "f_window_size",
+        "f_door_material",
+        "f_door_type",
+        "f_door_size",
+        "f_glass_type",
+        "f_cameras",
+        "f_film_type",
+        "f_glasspack_size",
+        "f_glass_thickness_mm",
+        "f_glass_formula",
+        "f_facade_cladding",
+        "f_facade_frame",
+        "f_facade_insulation",
+        "f_roof_view",
+        "f_roof_covering",
+        "f_roof_hydro",
+        "f_roof_insulation",
+        "f_roof_rafters_material",
+        "f_gutter_material",
+        "f_snowguards_type",
+        "f_socle_finish",
+        "f_damage_char",
+        "f_damage_size",
+        "f_room_size",
+        "f_year_last_caprepair",
+        "f_door_openings_count",
+        "f_window_openings_count",
+        "f_year_built",
+        "f_furniture_name",
+        "f_furniture_brand",
+        "f_furniture_year",
+        "f_furniture_info",
+        "f_photos"
+      ],
+      "value_matching": {
+        "select": "string_or_other_object_choice",
+        "other_object_keys": {
+          "choice": "choice",
+          "other": "other"
+        }
+      }
+    }
+  }
+}
