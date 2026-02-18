@@ -8376,9 +8376,16 @@ if (specialsRaw.length) {
   const subChoice = getChoice(item[F_SUB]);
 
   const catDictId = sel.category.dictionary_id;
-  const elDictId  = catChoice ? computeElementDictId(catChoice) : null;
-  const subDictId = (catChoice && elChoice) ? computeSubelementDictId(catChoice, elChoice) : null;
-  const showSubelement = !!subDictId; // по Config.DB: subelement показываем только там, где есть словарь по category|element
+const elDictId  = catChoice ? computeElementDictId(catChoice) : null;
+
+// Элемент показываем только там, где Config.DB дал словарь для выбранной категории
+const showElement = !!elDictId;
+
+const subDictId = (catChoice && showElement && elChoice)
+  ? computeSubelementDictId(catChoice, elChoice)
+  : null;
+
+const showSubelement = !!subDictId; // как и было: только если есть словарь по category|element
 
   // runtime (for visibility/required/dictionary overrides)
   let runtime = { fields:{} };
@@ -8527,7 +8534,8 @@ if (specialsRaw.length) {
     allowOther: false
   });
 
-  // Element
+// Element (только если применим для выбранной категории)
+if (showElement) {
   renderSelectWithOther({
     fid: F_EL,
     label: (fieldsById.get(F_EL)?.label || "Элемент"),
@@ -8536,6 +8544,20 @@ if (specialsRaw.length) {
     disabled: !catChoice || !elDictId,
     allowOther: true
   });
+} else {
+  // если элемент не применим (например категория "Мебель") — чистим ключи на всякий случай
+  if (Object.prototype.hasOwnProperty.call(item, F_EL) || Object.prototype.hasOwnProperty.call(item, F_SUB)) {
+    const st0 = Store.get();
+    const prevSnap = safeClone(st0.damage_items[idx] || {});
+    Store.update(d => {
+      const it = d.damage_items[idx];
+      if (!it) return;
+      delete it[F_EL];
+      delete it[F_SUB];
+      applyRulesCommit(prevSnap, it, d);
+    });
+  }
+}
 
   // Subelement (только если есть dictionary_by_category_element)
   if (showSubelement) {
@@ -8572,10 +8594,12 @@ if (specialsRaw.length) {
     const e = getChoice(itNow[F_EL]);
     const s = getChoice(itNow[F_SUB]);
 
-    let msg = "Выбери Категорию и Элемент.";
-    if (c && !e) msg = "Выбери Элемент.";
-    if (c && e && showSubelement && !s) msg = "Выбери Подэлемент.";
-    if (c && e && (!showSubelement || s)) msg = "Под текущие значения не найден шаблон (template). Проверь Config.DB.templates.";
+    let msg = "Выбери Категорию.";
+if (c && showElement && !e) msg = "Выбери Элемент.";
+if (c && showElement && e && showSubelement && !s) msg = "Выбери Подэлемент.";
+if (c && (!showElement || e) && (!showSubelement || s)) {
+  msg = "Под текущие значения не найден шаблон (template). Проверь Config.DB.templates.";
+}
 
     root.appendChild(el("div", { class:"muted", style:"margin-top:10px;", text: msg }));
 
@@ -8660,10 +8684,10 @@ if (specialsRaw.length) {
     const miss = [];
 
     // selectors
-    const c = getChoice(itNow[F_CAT]);
-    const e = getChoice(itNow[F_EL]);
-    if (!c) miss.push(F_CAT);
-    if (!e) miss.push(F_EL);
+const c = getChoice(itNow[F_CAT]);
+const e = getChoice(itNow[F_EL]);
+if (!c) miss.push(F_CAT);
+if (showElement && !e) miss.push(F_EL);
 
     if (showSubelement) {
       const tfSub = tmplFieldById.get(F_SUB);
@@ -9102,10 +9126,10 @@ if (specialsRaw.length) {
     const input = el("input", {
   type:"file",
   accept:"image/*",
-  capture:"environment",
   multiple:true,
   style:"display:none;"
 });
+
     fieldsCard.appendChild(input);
 
     const btn = el("button", { type:"button", class:"primary", text:"Добавить фото", style:"margin-top:10px;" });
@@ -9214,7 +9238,7 @@ btn.addEventListener("click", () => {
   const remaining = Math.max(0, max - arr.length);
 
   alert(
-    "Снимай в альбомной ориентации. Один ракурс — одно фото. " +
+    "Сделай/загрузи фото в горизонтальной ориентации. Один ракурс — одно фото. " +
     `Лимит: максимум ${max} фото на повреждение (осталось ${remaining}).`
   );
 
