@@ -59,6 +59,45 @@
 .reqStar.reqStarErr {
   color: #b91c1c;
 }
+    /* ===== Sticky Footer (по ТЗ) ===== */
+    .stickyFooter{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #fff;
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 50;
+    }
+    .stickyFooterInner{
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    /* В футере кнопки не должны иметь верхний отступ */
+    .stickyFooter .actions { margin-top: 0; }
+
+    /* Кнопки в футере нормальной высоты */
+    .stickyFooter button { min-height: 48px; }
+
+    /* Запас снизу у контента, чтобы футер НЕ перекрывал последний элемент */
+    .wrap{
+      padding-bottom: calc(var(--footerH, 80px) + 16px);
+    }
+
+    /* Когда клавиатура открыта: футер превращаем в обычный блок (static) */
+    body.kbdOpen .stickyFooter{
+      position: static;
+      box-shadow: none;
+      padding-bottom: 10px;
+    }
+
+    /* И в этом режиме запас снизу не нужен */
+    body.kbdOpen .wrap{
+      padding-bottom: 16px;
+    }
   </style>
 </head>
 <body>
@@ -87,6 +126,11 @@
 
   <div class="card" id="screen"></div>
 
+    <!-- Sticky footer (по ТЗ): кнопки навигации фиксированы снизу -->
+    <div id="stickyFooter" class="stickyFooter" style="display:none;">
+      <div class="stickyFooterInner" id="stickyFooterInner"></div>
+    </div>
+  
   <div class="card" style="margin-top:12px;">
     <details>
       <summary><strong>Debug</strong> (state)</summary>
@@ -6612,6 +6656,71 @@
   return n;
 }
 
+  // ===============================
+  // Sticky Footer helpers
+  // ===============================
+  const StickyFooter = (() => {
+    const host = $("stickyFooter");
+    const inner = $("stickyFooterInner");
+    if (!host || !inner) return { set: () => {}, clear: () => {}, measure: () => {} };
+
+    function measure() {
+      // высоту футера складываем в CSS-переменную, чтобы .wrap знал, сколько “оставлять снизу”
+      const h = host.offsetHeight || 0;
+      document.documentElement.style.setProperty("--footerH", `${h}px`);
+    }
+
+    function clear() {
+      inner.replaceChildren();
+      host.style.display = "none";
+      measure();
+    }
+
+    function set(node) {
+      inner.replaceChildren(node);
+      host.style.display = "";
+      // после вставки — перемеряем
+      requestAnimationFrame(measure);
+    }
+
+    window.addEventListener("resize", () => measure());
+    return { set, clear, measure };
+  })();
+
+    // ===============================
+  // Mobile keyboard detection (visualViewport)
+  // ===============================
+  function updateKeyboardState() {
+    // Работает хорошо на мобильных (iOS/Android)
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    // Когда клавиатура открылась, видимая высота (vv.height) сильно уменьшается
+    const diff = window.innerHeight - vv.height;
+
+    // Порог: подбираем так, чтобы не срабатывало от мелких “скачков”
+    const isOpen = diff > 140;
+
+    document.body.classList.toggle("kbdOpen", isOpen);
+
+    // Когда футер в static — надо перемерить высоту/отступы
+    StickyFooter.measure();
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateKeyboardState);
+    window.visualViewport.addEventListener("scroll", updateKeyboardState);
+  }
+
+  // Фолбэк (если visualViewport нет)
+  window.addEventListener("focusin", (e) => {
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) {
+      setTimeout(updateKeyboardState, 50);
+    }
+  });
+  window.addEventListener("focusout", () => setTimeout(updateKeyboardState, 250));
+
   function safeClone(v) {
     if (typeof structuredClone === "function") return structuredClone(v);
     return JSON.parse(JSON.stringify(v));
@@ -7837,6 +7946,8 @@ function initRulesEngine(cfg) {
     const screen = $("screen");
     screen.replaceChildren();
 
+    StickyFooter.clear();
+
     // Debug
     $("debugPre").textContent = JSON.stringify({
       stepId: st.stepId,
@@ -7929,7 +8040,12 @@ function initRulesEngine(cfg) {
       el("button", { type:"button", text:"Назад", disabled: !canPrev, onclick: onPrev }),
       el("button", { type:"button", class:"primary", text: nextText, disabled: !canNext || nextDisabled, onclick: onNext }),
     ]);
-    return row;
+
+    // ВАЖНО: кнопки кладём в sticky footer
+    StickyFooter.set(row);
+
+    // А в DOM шага возвращаем невидимую “заглушку”, чтобы шаг не ломался
+    return document.createComment("actions-mounted-in-stickyFooter");
   }
 
   function goNext(cfg, currentId) {
