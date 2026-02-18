@@ -131,13 +131,12 @@
       <div class="stickyFooterInner" id="stickyFooterInner"></div>
     </div>
   
-  <div class="card" style="margin-top:12px;">
-    <details>
-      <summary><strong>Debug</strong> (state)</summary>
-      <pre class="pre" id="debugPre"></pre>
-    </details>
-  </div>
-</div>
+    <div class="card" id="debugCard" style="margin-top:12px; display:none;">
+      <details id="debugDetails">
+        <summary><strong>Диагностика</strong> (state)</summary>
+        <pre class="pre" id="debugPre"></pre>
+      </details>
+    </div>   
 
 <!-- Встроенный Config.DB (fallback). Не исполняется, просто хранит JSON. -->
 <textarea id="embeddedConfig" hidden>
@@ -7867,6 +7866,54 @@ function initRulesEngine(cfg) {
     n.className = kind === "err" ? "err" : kind === "ok" ? "ok" : "muted";
     n.textContent = text;
   }
+    // ===============================
+  // Hidden debug mode (7 taps on "Анкета" in stepper)
+  // ===============================
+  const DebugMode = (() => {
+    const KEY = "osmotrum.debug";
+    let enabled = false;
+
+    try { enabled = localStorage.getItem(KEY) === "1"; } catch {}
+
+    function isEnabled() { return enabled; }
+
+    function set(v) {
+      enabled = !!v;
+      try { localStorage.setItem(KEY, enabled ? "1" : "0"); } catch {}
+    }
+
+    function toggle() {
+      const next = !enabled;
+      set(next);
+      setStatus(next ? "Режим диагностики включён." : "Режим диагностики выключен.", next ? "ok" : "muted");
+      render(); // перерисовать UI, чтобы показать/скрыть блок диагностики
+    }
+
+    return { isEnabled, toggle };
+  })();
+
+  const DebugUnlock = (() => {
+    let taps = 0;
+    let lastTs = 0;
+
+    const NEED = 7;
+    const GAP_MS = 1200; // если пауза между тапами > 1.2с — начинаем заново
+
+    function tap() {
+      const now = Date.now();
+      if (now - lastTs > GAP_MS) taps = 0;
+      lastTs = now;
+
+      taps += 1;
+      if (taps >= NEED) {
+        taps = 0;
+        DebugMode.toggle();
+      }
+    }
+
+    return { tap };
+  })();
+
   // ===============================
   // Stepper guards (чтобы нельзя было прыгать вперёд без валидности)
   // ===============================
@@ -7948,13 +7995,24 @@ function initRulesEngine(cfg) {
 
     StickyFooter.clear();
 
-    // Debug
-    $("debugPre").textContent = JSON.stringify({
-      stepId: st.stepId,
-      form: st.form,
-      damage_items_count: st.damage_items.length,
-      current_damage_index: st.current_damage_index
-    }, null, 2);
+    // Debug (показываем только в режиме диагностики)
+    const dbgOn = DebugMode.isEnabled();
+    const dbgCard = $("debugCard");
+    if (dbgCard) dbgCard.style.display = dbgOn ? "" : "none";
+
+    if (dbgOn) {
+      $("debugPre").textContent = JSON.stringify({
+        stepId: st.stepId,
+        form: st.form,
+        damage_items_count: st.damage_items.length,
+        current_damage_index: st.current_damage_index
+      }, null, 2);
+
+      const dd = $("debugDetails");
+      if (dd) dd.open = true; // чтобы сразу было видно при включении
+    } else {
+      $("debugPre").textContent = "";
+    }
 
     if (!st.config) {
       $("stepperCard").style.display = "none";
@@ -7985,6 +8043,9 @@ function initRulesEngine(cfg) {
         "aria-current": String(s.id === st.stepId),
         text: s.title,
         onclick: () => {
+                // Секрет: 7 тапов по шагу "Анкета" (step1) включает/выключает диагностику
+      if (s.id === "step1" && s.title === "Анкета") DebugUnlock.tap();
+      
   const stNow = Store.get();
   const stepsNow = stNow.config.ui.steps;
 
