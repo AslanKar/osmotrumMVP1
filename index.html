@@ -131,12 +131,13 @@
       <div class="stickyFooterInner" id="stickyFooterInner"></div>
     </div>
   
-    <div class="card" id="debugCard" style="margin-top:12px; display:none;">
-      <details id="debugDetails">
-        <summary><strong>Debug</strong> (state)</summary>
-        <pre class="pre" id="debugPre"></pre>
-      </details>
-    </div>  
+  <div class="card" style="margin-top:12px;">
+    <details>
+      <summary><strong>Debug</strong> (state)</summary>
+      <pre class="pre" id="debugPre"></pre>
+    </details>
+  </div>
+</div>
 
 <!-- Встроенный Config.DB (fallback). Не исполняется, просто хранит JSON. -->
 <textarea id="embeddedConfig" hidden>
@@ -6651,91 +6652,6 @@
     if (v != null) n.setAttribute(k, String(v));
   }
 
-  // ===============================
-  // Hidden Debug mode (OFF by default)
-  // Включается жестом 7 тапов по "Анкета"
-  // ===============================
-  const DebugMode = (() => {
-    const KEY = "osmotrum.debug.enabled";
-    let enabled = localStorage.getItem(KEY) === "1";
-
-    function apply() {
-      const card = $("debugCard");
-      const details = $("debugDetails");
-      if (!card) return;
-      card.style.display = enabled ? "" : "none";
-
-      if (details) {
-        if (enabled) details.setAttribute("open", "");
-        else details.removeAttribute("open");
-      }
-    }
-
-    function set(v) {
-      enabled = !!v;
-      localStorage.setItem(KEY, enabled ? "1" : "0");
-      apply();
-    }
-
-    function toggle() { set(!enabled); }
-    function isEnabled() { return enabled; }
-
-    // применяем сразу (после загрузки страницы)
-    setTimeout(apply, 0);
-
-    return { isEnabled, toggle, apply, set };
-  })();
-
-    // ===============================
-  // Gesture: 7 taps within time window
-  // ===============================
-  const DebugGesture7Taps = (() => {
-    let count = 0;
-    let lastTs = 0;
-    let timer = null;
-
-    function hit() {
-      const now = Date.now();
-      // если пауза большая — начинаем заново
-      if (now - lastTs > 1200) count = 0;
-      lastTs = now;
-
-      count++;
-      clearTimeout(timer);
-      timer = setTimeout(() => { count = 0; }, 1500);
-
-      if (count >= 7) {
-        count = 0;
-        clearTimeout(timer);
-        DebugMode.toggle();
-        // короткая подсказка в статусной строке (не обязательно, но удобно)
-        try {
-          const on = DebugMode.isEnabled();
-          const msg = on ? "Режим диагностики: ВКЛ" : "Режим диагностики: ВЫКЛ";
-          // setStatus объявлен ниже, поэтому проверяем наличие
-          if (typeof setStatus === "function") setStatus(msg, on ? "ok" : "muted");
-          else $("statusLine").textContent = msg;
-        } catch {}
-      }
-    }
-
-    function bind(node) {
-      if (!node) return;
-
-      // pointerdown работает почти везде
-      node.addEventListener("pointerdown", (e) => {
-        // только “основной” тап
-        if (e.isPrimary === false) return;
-        hit();
-      }, { passive: true });
-
-      // фолбэк для старых браузеров iOS
-      node.addEventListener("touchstart", () => hit(), { passive: true });
-    }
-
-    return { bind };
-  })();
-
   for (const c of children) n.appendChild(c);
   return n;
 }
@@ -8063,54 +7979,45 @@ function initRulesEngine(cfg) {
     const stepsWrap = $("steps");
     stepsWrap.replaceChildren();
     for (const s of steps) {
-      const btn = el("button", {
+      stepsWrap.appendChild(el("button", {
         type:"button",
         class:"stepBtn",
         "aria-current": String(s.id === st.stepId),
         text: s.title,
         onclick: () => {
-          const stNow = Store.get();
-          const stepsNow = stNow.config.ui.steps;
+  const stNow = Store.get();
+  const stepsNow = stNow.config.ui.steps;
 
-          const curIdx = stepsNow.findIndex(x => x.id === stNow.stepId);
-          const tgtIdx = stepsNow.findIndex(x => x.id === s.id);
+  const curIdx = stepsNow.findIndex(x => x.id === stNow.stepId);
+  const tgtIdx = stepsNow.findIndex(x => x.id === s.id);
 
-          // назад (или на текущий) — всегда можно
-          if (tgtIdx <= curIdx) {
-            // ВАЖНО: если это текущий шаг — ничего не делаем (чтобы 7 тапов не перерендеривали экран)
-            if (s.id === stNow.stepId) return;
+  // назад (или на текущий) — всегда можно
+  if (tgtIdx <= curIdx) {
+    Store.update(d => { d.stepId = s.id; });
+    refreshStepperAvailability();
+    return;
+  }
 
-            Store.update(d => { d.stepId = s.id; });
-            refreshStepperAvailability();
-            return;
-          }
+  // вперёд — только на 1 шаг
+  if (tgtIdx === curIdx + 1) {
+    const ok = (StepGuards.canNextByStepId[stNow.stepId] !== false);
+    if (!ok) {
+      setStatus("Сначала заполни обязательные поля текущего шага.", "err");
+      const damageId = (stNow.stepId === "step3" && stNow.current_damage_index != null) ? stNow.current_damage_index : null;
+      UIValidation.markAttempt(stNow.stepId, damageId);
+      render();
+      return;
+    }
+    Store.update(d => { d.stepId = s.id; });
+    refreshStepperAvailability();
+    return;
+  }
 
-          // вперёд — только на 1 шаг
-          if (tgtIdx === curIdx + 1) {
-            const ok = (StepGuards.canNextByStepId[stNow.stepId] !== false);
-            if (!ok) {
-              setStatus("Сначала заполни обязательные поля текущего шага.", "err");
-              refreshStepperAvailability();
-              return;
-            }
-            Store.update(d => { d.stepId = s.id; });
-            refreshStepperAvailability();
-            return;
-          }
-
-          // попытка “перепрыгнуть”
-          setStatus("Нельзя пропускать шаги. Перейди на следующий шаг по порядку.", "err");
-          refreshStepperAvailability();
-        }
-      });
-
-      // Жест 7 тапов вешаем на шаг Анкета (обычно это step1)
-      // Привязка по stepId надёжнее, чем по тексту (но текст будет "Анкета" как ты хочешь)
-      if (s.id === "step1") {
-        DebugGesture7Taps.bind(btn);
-      }
-
-      stepsWrap.appendChild(btn);
+  // попытка “перепрыгнуть”
+  setStatus("Нельзя пропускать шаги. Перейди на следующий шаг по порядку.", "err");
+  refreshStepperAvailability();
+}
+      }));
     }
 
     // Render current step
@@ -8211,18 +8118,12 @@ function initRulesEngine(cfg) {
       }
 
       // Обновляем debug без перерендера всего экрана
-          // Debug (только когда включён скрытый режим)
-    if (DebugMode.isEnabled()) {
       $("debugPre").textContent = JSON.stringify({
-        stepId: st.stepId,
-        form: st.form,
-        damage_items_count: st.damage_items.length,
-        current_damage_index: st.current_damage_index
+        stepId: stNow.stepId,
+        form: stNow.form,
+        damage_items_count: stNow.damage_items.length,
+        current_damage_index: stNow.current_damage_index
       }, null, 2);
-    } else {
-      $("debugPre").textContent = "";
-    }
-
       StepGuards.canNextByStepId.step1 = (missing.length === 0);
       refreshStepperAvailability();
 
