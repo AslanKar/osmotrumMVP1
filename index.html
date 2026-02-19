@@ -29,6 +29,25 @@
     }
     textarea { min-height:90px; resize:vertical; }
     .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .catTiles{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+  margin-top:8px;
+}
+.catTile{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:88px;
+  border-radius:14px;
+}
+.catTile.active{
+  border-color: var(--accent);
+}
+.catTileIcon{ font-size:28px; line-height:1; }
+.catTileLabel{ margin-top:6px; font-weight:700; }
     button {
       border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer;
     }
@@ -102,17 +121,18 @@
 </head>
 <body>
 <header>
-  <div class="row" style="justify-content:space-between;">
-    <div>
-      <div style="font-weight:800;">Осмотрум v5.5 — Local Mode</div>
-      <div class="muted" id="statusLine">1) Выбери Config.DB.v5.5.final.json</div>
-      <div class="muted" id="persistLine"></div>
-    </div>
-
+  <div class="row" style="justify-content:space-between; align-items:center;">
+    <div style="font-weight:800;">Осмотрум - СОГАЗ</div>
     <div class="row">
-      <input id="configFile" type="file" accept=".json,application/json" />
       <button id="resetBtn" type="button">Новый осмотр</button>
     </div>
+  </div>
+
+  <!-- Скрытые элементы (нужны JS-логике, но не показываем в UI) -->
+  <div style="display:none;">
+    <div id="statusLine"></div>
+    <div id="persistLine"></div>
+    <input id="configFile" type="file" accept=".json,application/json" />
   </div>
 </header>
 
@@ -7424,6 +7444,17 @@ function makeConditionMatcher(config, selectors, ruleWhen) {
   if (ruleWhen?.field) whenFields.push(ruleWhen.field);
   if (Array.isArray(ruleWhen?.fields)) whenFields.push(...ruleWhen.fields);
 
+  // normalize {choice, other} -> choice for comparisons inside rules
+  const otherKeys = config?.state_schema?.damage_item?.value_matching?.other_object_keys || {};
+  const CHOICE_KEY = otherKeys.choice || "choice";
+
+  const norm = (v) => {
+    if (v && typeof v === "object" && Object.prototype.hasOwnProperty.call(v, CHOICE_KEY)) {
+      return v[CHOICE_KEY];
+    }
+    return v;
+  };
+
   function prefer(candidates) {
     for (const c of candidates) if (whenFields.includes(c)) return c;
     for (const c of candidates) if (isFieldId(config, c)) return c;
@@ -7448,13 +7479,13 @@ function makeConditionMatcher(config, selectors, ruleWhen) {
       const trigger = ruleWhen?.field
         || (Array.isArray(ruleWhen?.fields) && ruleWhen.fields.length === 1 ? ruleWhen.fields[0] : null);
       if (!trigger) return false;
-      return stableStringify(item[trigger]) === stableStringify(ifObj.value);
+      return stableStringify(norm(item[trigger])) === stableStringify(ifObj.value);
     }
 
     for (const [k, expected] of Object.entries(ifObj)) {
       const fieldId = resolveSemanticFieldId(k);
       if (!fieldId) return false;
-      if (stableStringify(item[fieldId]) !== stableStringify(expected)) return false;
+      if (stableStringify(norm(item[fieldId])) !== stableStringify(expected)) return false;
     }
     return true;
   }
@@ -7652,6 +7683,24 @@ function createRulesEngine(config) {
             rt.debug.applied.push({ rule: rule.id, action: t, branch: "if", matched: true });
           } else {
             const elseObj = action.else || {};
+            // SCOPE GUARD:
+// If action.if is scoped by selectors (category+element and/or subelement),
+// do NOT apply else branch outside that selector scope.
+// This prevents cross-category rules from hiding the same fields
+// (example: room-door vs glazing-door glass blocks both target f_glass_*).
+const ifObj = action.if || {};
+const scopeKeys = ["category", "element", "subelement"]
+  .filter(k => Object.prototype.hasOwnProperty.call(ifObj, k));
+
+if (scopeKeys.length >= 2) {
+  const scopeIf = {};
+  for (const k of scopeKeys) scopeIf[k] = ifObj[k];
+  const inScope = matchesIfObject(next, scopeIf);
+  if (!inScope) {
+    rt.debug.applied.push({ rule: rule.id, action: t, branch: "else-skip-scope", matched: false });
+    continue;
+  }
+}
             const vis = ("visible" in elseObj) ? !!elseObj.visible : false;
             const req = (typeof action.else_required === "boolean") ? action.else_required : false;
 
@@ -7994,6 +8043,7 @@ function initRulesEngine(cfg) {
     screen.replaceChildren();
 
     StickyFooter.clear();
+    updateKeyboardState();
 
     // Debug (показываем только в режиме диагностики)
     const dbgOn = DebugMode.isEnabled();
@@ -8029,9 +8079,6 @@ function initRulesEngine(cfg) {
     $("stepperCard").style.display = "";
     const cfg = st.config;
     const steps = cfg.ui.steps;
-
-    $("configMeta").textContent = cfg.meta?.version ? `Config v${cfg.meta.version}` : "Config loaded";
-    setStatus("Config загружен. Можно идти по шагам.", "ok");
 
     // Stepper
     const stepsWrap = $("steps");
@@ -8145,7 +8192,7 @@ function initRulesEngine(cfg) {
     }
 
     root.appendChild(el("div", { text:"Шаг 1: Анкета" , style:"font-weight:800; font-size:16px;" }));
-    root.appendChild(el("div", { class:"muted", text:"Заполни обязательные поля. Даты хранятся в state как YYYY-MM-DD." }));
+    root.appendChild(el("div", { class:"muted", text:"Заполни обязательные поля." }));
 
     const fieldUi = new Map(); // fid -> { starEl, errEl }
 
@@ -8311,14 +8358,15 @@ function initRulesEngine(cfg) {
     root.appendChild(noteEl);
 
     // actions (без disabled="false" ловушки)
-    const prevBtn = el("button", { type:"button", text:"Назад", disabled:true });
-    nextBtn = el("button", {
+nextBtn = el("button", {
       type:"button",
       class:"primary",
-      text:"Далее → Повреждения",
+      text:"Далее",
       onclick: () => goNext(cfg, "step1")
     });
-    root.appendChild(el("div", { class:"actions" }, [prevBtn, nextBtn]));
+    const row = el("div", { class:"actions" }, [nextBtn]);
+    StickyFooter.set(row);
+    root.appendChild(document.createComment("actions-mounted-in-stickyFooter"));
 
     refreshStep1Ui();
   }
@@ -8327,8 +8375,7 @@ function initRulesEngine(cfg) {
   // Step2 (список повреждений)
   // ===============================
   function renderStep2(root, cfg, st) {
-    root.appendChild(el("div", { text:"Шаг 2: Повреждения" , style:"font-weight:800; font-size:16px;" }));
-    root.appendChild(el("div", { class:"muted", text:"Здесь будет список повреждений (state.damage_items). Добавление/редактирование — через Step3 (в следующей итерации встроим полноценный редактор)." }));
+    root.appendChild(el("div", { text:"Шаг 3: Список повреждений" , style:"font-weight:800; font-size:16px;" }));
 
     const list = el("div", { class:"list" });
 
@@ -8338,7 +8385,6 @@ function initRulesEngine(cfg) {
       st.damage_items.forEach((it, idx) => {
         const left = el("div", {}, [
           el("div", { text: `Повреждение ${idx + 1}` , style:"font-weight:700;" }),
-          el("div", { class:"muted", text: "Редактирование будет на Step3." })
         ]);
 
         const btns = el("div", { class:"row" }, [
@@ -8397,7 +8443,7 @@ function initRulesEngine(cfg) {
       canPrev:true, canNext:true, nextDisabled:false,
       onPrev: () => goPrev(cfg, "step3"),
       onNext: () => goNext(cfg, "step3"),
-      nextText: "Далее → Финализация"
+      nextText: "Далее"
     }));
     return;
   }
@@ -8498,7 +8544,7 @@ if (specialsRaw.length) {
   const idx = st.current_damage_index;
   const item = (idx != null && st.damage_items[idx]) ? st.damage_items[idx] : null;
 
-  root.appendChild(el("div", { text:"Шаг 3: Добавление повреждения", style:"font-weight:800; font-size:16px;" }));
+  root.appendChild(el("div", { text:"Шаг 2: Добавление повреждения", style:"font-weight:800; font-size:16px;" }));
 
 
   if (idx == null || !item) {
@@ -8507,7 +8553,7 @@ if (specialsRaw.length) {
       canPrev:true, canNext:true, nextDisabled:false,
       onPrev: () => goPrev(cfg, "step3"),
       onNext: () => goNext(cfg, "step3"),
-      nextText: "Далее → Финализация"
+      nextText: "Далее"
     }));
     return;
   }
@@ -8701,15 +8747,68 @@ const showSubelement = !!subDictId; // как и было: только если
     maybeRenderOther();
   };
 
-  // Category
-  renderSelectWithOther({
-    fid: F_CAT,
-    label: (fieldsById.get(F_CAT)?.label || "Категория"),
-    required: true,
-    dictId: catDictId,
-    disabled: false,
-    allowOther: false
-  });
+// Category tiles (4 крупных значка)
+{
+  const catLabel = (fieldsById.get(F_CAT)?.label || "Категория");
+  const starEl = el("span", { class:"reqStar", text:"*" });
+
+  selectorsCard.appendChild(el("label", {}, [
+    document.createTextNode(catLabel),
+    document.createTextNode(" "),
+    starEl
+  ]));
+
+  const tiles = el("div", { class:"catTiles" });
+  const iconByCat = {
+    "Помещение":"🏠",
+    "Здание":"🏢",
+    "Мебель":"🛋️",
+    "Остекление":"🪟"
+  };
+
+  for (const v of buildOrderedValues(catDictId)) {
+    if (!iconByCat[v]) continue; // строго 4 категории
+    const isActive = (catChoice === v);
+
+    tiles.appendChild(el("button", {
+      type:"button",
+      class: "catTile" + (isActive ? " active" : ""),
+      onclick: () => {
+        if (catChoice === v) return;
+
+        UIValidation.markTouched("step3", F_CAT, idx);
+
+        const st0 = Store.get();
+        const prevSnap = safeClone(st0.damage_items[idx] || {});
+
+        Store.update(d => {
+          const it = d.damage_items[idx];
+          if (!it) return;
+
+          it[F_CAT] = v;
+          delete it[F_EL];
+          delete it[F_SUB];
+
+          // очистка полей шаблона при смене категории (как и было в dropdown)
+          clearToSelectorsAndPhotos(it);
+
+          applyRulesCommit(prevSnap, it, d);
+        });
+      }
+    }, [
+      el("div", { class:"catTileIcon", text: iconByCat[v] }),
+      el("div", { class:"catTileLabel", text: v })
+    ]));
+  }
+
+  selectorsCard.appendChild(tiles);
+
+  const errEl = el("div", { class:"fieldError", text:"" });
+  selectorsCard.appendChild(errEl);
+
+  // важно: чтобы валидация (звёздочка/ошибка) работала как раньше
+  fieldUi.set(F_CAT, { starEl, errEl });
+}
 
 // Element (только если применим для выбранной категории)
 if (showElement) {
@@ -8787,12 +8886,10 @@ if (c && (!showElement || e) && (!showSubelement || s)) {
       nextDisabled:true,
       onPrev: () => goPrev(cfg, "step3"),
       onNext: () => goNext(cfg, "step3"),
-      nextText: "Далее → Финализация"
+      nextText: "Далее"
     }));
     return;
   }
-
-  root.appendChild(el("div", { class:"muted", style:"margin-top:10px;", text:`Шаблон: ${tmpl.id}` }));
 
   // template field lookup
   const tmplFieldById = new Map();
@@ -9294,7 +9391,7 @@ if (showElement && !e) miss.push(F_EL);
       def.max_count ?? 10
     );
 
-    const info = el("div", { class:"muted", style:"margin-top:6px;", text:`Сейчас: ${cur.length}/${max}. Максимум ${max} фото на повреждение. Можно добавить: ${Math.max(0, max - cur.length)}` });
+    const info = el("div", { class:"muted", style:"margin-top:6px;", text:`Максимум ${max} фото на повреждение. Загружено: ${cur.length}/${max} фото.` });
     fieldsCard.appendChild(info);
 
     const msg = el("div", { class:"muted", style:"margin-top:6px;" });
@@ -9355,7 +9452,7 @@ if (showElement && !e) miss.push(F_EL);
       const st3 = Store.get();
       const it3 = st3.damage_items[idx] || {};
       const a3 = Array.isArray(it3[fid]) ? it3[fid] : [];
-      info.textContent = `Сейчас: ${a3.length}/${max}. Максимум ${max} фото на повреждение. Можно добавить: ${Math.max(0, max - a3.length)}`;
+      info.textContent = `Максимум ${max} фото на повреждение. Добавлено: ${a3.length}/${max} фото.`;
       btn.disabled = (a3.length >= max);
     };
     input.addEventListener("change", async () => {
@@ -9481,11 +9578,6 @@ btn.addEventListener("click", () => {
         d.stepId = "step3";
       })
     }),
-    el("button", {
-      type:"button",
-      text:"← К списку повреждений (Шаг 2)",
-      onclick: () => Store.update(d => { d.stepId = "step2"; })
-    })
   ]);
   root.appendChild(addMoreRow);
 
@@ -9496,11 +9588,11 @@ btn.addEventListener("click", () => {
     nextDisabled: true, // обновим ниже
     onPrev: () => goPrev(cfg, "step3"),
     onNext: () => goNext(cfg, "step3"),
-    nextText: "Далее → Финализация"
+    nextText: "Далее"
   });
 
-  // получить ссылку на next button, чтобы обновлять без перерендера
-  nextBtn = nav.querySelector("button.primary");
+  // получить ссылку на next button (кнопки в StickyFooter, nav — это comment-заглушка)
+  nextBtn = document.querySelector("#stickyFooterInner button.primary");
   root.appendChild(nav);
 
   refreshStep3Ui();
@@ -10300,15 +10392,17 @@ function renderStep4(root, cfg, st) {
   // быстрые кнопки, чтобы вернуться и исправить
   summaryCard.appendChild(el("div", { class:"actions", style:"margin-top:10px;" }, [
     el("button", { type:"button", text:"✎ Редактировать анкету (Шаг 1)", onclick: () => Store.update(d => { d.stepId = "step1"; }) }),
-    el("button", { type:"button", text:"☰ Повреждения (Шаг 2)", onclick: () => Store.update(d => { d.stepId = "step2"; }) }),
-    el("button", { type:"button", text:"＋ Добавление повреждений (Шаг 3)", onclick: () => Store.update(d => { d.stepId = "step3"; }) })
+    el("button", { type:"button", text:"＋ Добавить повреждение (Шаг 2)", onclick: () => Store.update(d => { d.stepId = "step3"; }) }),
+    el("button", { type:"button", text:"☰ Список повреждений (Шаг 3)", onclick: () => Store.update(d => { d.stepId = "step2"; }) })
   ]));
 
   root.appendChild(summaryCard);
 
-  const actions = (cfg.ui.steps.find(s => s.id === "step4")?.actions) || [];
-  const actRow = el("div", { class:"actions", style:"margin-top:12px;" });
-
+  
+  // -------------------------------
+  // PDF (Акт осмотра):
+  // формируем незаметно для клиента при нажатии кнопок снизу
+  // -------------------------------
   const buildPdfFileName = (stateForPdf) => {
     const iso = (stateForPdf?.f_inspection_date || new Date().toISOString().slice(0,10));
     const d = String(iso).replaceAll("-", "");
@@ -10318,7 +10412,7 @@ function renderStep4(root, cfg, st) {
     return `Акт_осмотра_${pol}_${d}.pdf`;
   };
 
-  const exportPdf = async (btn) => {
+  const makePdf = async (btn) => {
     btn.disabled = true;
     try {
       const stNow = Store.get();
@@ -10341,21 +10435,22 @@ function renderStep4(root, cfg, st) {
         }
       }
 
-      setStatus(`Экспорт PDF: загрузка фото ${0}/${ids.length}`, "ok");
-
       // читаем blobs из IDB
       const photosById = new Map();
       let done = 0;
+      if (ids.length) setStatus(`Формируем акт: загрузка фото ${done}/${ids.length}`, "ok");
+
       for (const pid of ids) {
         const rec = await Persistence.getImageRecord(pid);
         if (rec?.blob) photosById.set(pid, rec.blob);
         done++;
-        if (done % 2 === 0 || done === ids.length) {
-          setStatus(`Экспорт PDF: загрузка фото ${done}/${ids.length}`, "ok");
+        if (ids.length && (done % 2 === 0 || done === ids.length)) {
+          setStatus(`Формируем акт: загрузка фото ${done}/${ids.length}`, "ok");
         }
       }
 
-      setStatus("Экспорт PDF: генерация страниц…", "ok");
+      if (ids.length) setStatus("Формируем акт: генерация PDF…", "ok");
+
       const { pdfBlob } = await PdfMvp.generateMvpPdf({
         config: cfg,
         state: stateForPdf,
@@ -10365,67 +10460,56 @@ function renderStep4(root, cfg, st) {
       const fileName = buildPdfFileName(stateForPdf);
       await Persistence.savePdfRecord({ blob: pdfBlob, pdfId:"last", fileName });
 
-      setStatus("PDF готов. Скачивание…", "ok");
-      downloadBlob(pdfBlob, fileName);
-      setStatus("PDF скачан и сохранён (IDB: pdf/last).", "ok");
+      setStatus("Акт осмотра сформирован.", "ok");
+      return { pdfBlob, fileName };
     } catch (e) {
       console.error(e);
-      setStatus("Ошибка экспорта PDF: " + (e?.message || String(e)), "err");
-      alert(formatErr(e));
+      setStatus("Ошибка формирования акта: " + (e?.message || String(e)), "err");
+      throw e;
     } finally {
       btn.disabled = false;
     }
   };
 
-  const downloadLastPdf = async () => {
-    const rec = await Persistence.getPdfRecord("last");
-    if (!rec?.blob) {
-      alert("Пока нет сохранённого PDF. Сначала нажми «Экспорт PDF».");
-      return;
-    }
-    downloadBlob(rec.blob, rec.fileName || "Акт_осмотра.pdf");
-  };
+  const dlBtn = el("button", { type:"button", class:"primary", text:"Скачать Акт осмотра" });
+  dlBtn.addEventListener("click", async () => {
+    try {
+      const { pdfBlob, fileName } = await makePdf(dlBtn);
+      downloadBlob(pdfBlob, fileName);
+    } catch {}
+  });
 
-  for (const a of actions) {
-    if (a === "export_pdf") {
-      const btn = el("button", {
-        type:"button",
-        class:"primary",
-        text:"Экспорт PDF",
-        onclick: async () => exportPdf(btn)
-      });
-      actRow.appendChild(btn);
-    } else if (a === "submit") {
-      actRow.appendChild(el("button", {
-        type:"button",
-        text:"Submit (Phase1 без сети)",
-        onclick: () => alert("Phase1: submit без сети. В следующих итерациях сделаем backup/restore и итоговую фиксацию.")
-      }));
-    } else {
-      actRow.appendChild(el("button", { type:"button", text:`Action: ${a}`, disabled:true }));
-    }
-  }
+  const shBtn = el("button", { type:"button", text:"Направить Акт осмотра в АО \"СОГАЗ\"" });
+  shBtn.addEventListener("click", async () => {
+    try {
+      const { pdfBlob, fileName } = await makePdf(shBtn);
 
-  // кнопка “скачать последний pdf”
-  actRow.appendChild(el("button", {
-    type:"button",
-    text:"Скачать последний PDF",
-    onclick: downloadLastPdf
-  }));
+      // Если share недоступен — просто скачиваем.
+      if (!navigator.share) {
+        downloadBlob(pdfBlob, fileName);
+        return;
+      }
 
-  root.appendChild(actRow);
+      try {
+        const file = new File([pdfBlob], fileName, { type:"application/pdf" });
+        // canShare бывает не везде — проверяем аккуратно
+        if (navigator.canShare && !navigator.canShare({ files:[file] })) {
+          downloadBlob(pdfBlob, fileName);
+          return;
+        }
+        await navigator.share({ files:[file], title:fileName, text:"Акт осмотра (PDF)" });
+      } catch (e) {
+        // если share не сработал — fallback на скачивание
+        downloadBlob(pdfBlob, fileName);
+      }
+    } catch {}
+  });
 
-  root.appendChild(navButtons({
-    canPrev:true,
-    canNext:false,
-    nextDisabled:true,
-    onPrev: () => goPrev(cfg, "step4"),
-    onNext: () => {},
-    nextText: "Готово"
-  }));
+  const footerRow = el("div", { class:"actions" }, [dlBtn, shBtn]);
+  StickyFooter.set(footerRow);
+  root.appendChild(document.createComment("actions-mounted-in-stickyFooter"));
 }
-
-  function renderUnknownStep(root, step) {
+function renderUnknownStep(root, step) {
     root.appendChild(el("div", { class:"err", text:`Неизвестный шаг: ${step?.id || "?"}` }));
   }
 
