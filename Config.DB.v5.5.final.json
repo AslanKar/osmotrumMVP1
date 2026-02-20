@@ -6387,14 +6387,14 @@
         ]
       },
       {
-        "id": "step2",
-        "title": "Повреждения",
-        "list_ref": "state.damage_items"
+        "id": "step3",
+        "title": "Добавить повреждение",
+        "inventory_ref": "damage_item"
       },
       {
-        "id": "step3",
-        "title": "Добавление повреждения",
-        "inventory_ref": "damage_item"
+        "id": "step2",
+        "title": "Список повреждений",
+        "list_ref": "state.damage_items"
       },
       {
         "id": "step4",
