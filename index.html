@@ -55,6 +55,8 @@
     button:disabled { opacity:.5; cursor:not-allowed; }
     .list { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
     .item { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .card.item.incomplete { border:1px solid #ef4444; }
+.card.item .incompleteHint { color:#b91c1c; font-size:12px; margin-top:4px; }
     .pre { white-space:pre-wrap; background:#0b1020; color:#e5e7eb; padding:12px; border-radius:10px; overflow:auto; }
     details summary { cursor:pointer; user-select:none; }
     /* Photos UI (Iteration 4.2.3) */
@@ -6637,6 +6639,33 @@
   // Utils (без innerHTML)
   // ===============================
   const $ = (id) => document.getElementById(id);
+// ===============================
+// User interaction timestamp + pending focus target (prevents "double tap" after re-render)
+// ===============================
+let __lastUserPointerTs = 0;
+let __pendingFocus = null; // { key, ts }
+
+function __pickFocusKeyFromEventTarget(t) {
+  try {
+    const el = t && t.closest ? t.closest('[data-fid],input,textarea,select') : t;
+    if (!el || !el.getAttribute) return null;
+    const fid = el.getAttribute('data-fid');
+    if (fid) return fid;
+    if (el.id) return el.id;
+    if (el.name) return el.name;
+  } catch {}
+  return null;
+}
+
+function __markUserPointer(e) {
+  __lastUserPointerTs = Date.now();
+  const key = __pickFocusKeyFromEventTarget(e && e.target);
+  if (key) __pendingFocus = { key, ts: Date.now() };
+}
+
+window.addEventListener("pointerdown", __markUserPointer, { capture:true, passive:true });
+window.addEventListener("mousedown", __markUserPointer, { capture:true, passive:true });
+window.addEventListener("touchstart", __markUserPointer, { capture:true, passive:true });
 
   function el(tag, props = {}, children = []) {
   const n = document.createElement(tag);
@@ -6709,21 +6738,49 @@
     // ===============================
   // Mobile keyboard detection (visualViewport)
   // ===============================
+  let __kbdOpenPrev = null;
   function updateKeyboardState() {
-    // Работает хорошо на мобильных (iOS/Android)
-    const vv = window.visualViewport;
-    if (!vv) return;
+// Работает хорошо на мобильных (iOS/Android)
+const vv = window.visualViewport;
+if (!vv) return;
 
-    // Когда клавиатура открылась, видимая высота (vv.height) сильно уменьшается
-    const diff = window.innerHeight - vv.height;
+// Чтобы не “дёргать” layout на SELECT и прочих элементах:
+// kbdOpen включаем только если фокус в INPUT/TEXTAREA (реально может быть клавиатура).
+const ae = document.activeElement;
+const editing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA");
 
-    // Порог: подбираем так, чтобы не срабатывало от мелких “скачков”
-    const isOpen = diff > 140;
+// Когда клавиатура открылась, видимая высота (vv.height) сильно уменьшается
+const diff = window.innerHeight - vv.height;
 
-    document.body.classList.toggle("kbdOpen", isOpen);
+// Порог: подбираем так, чтобы не срабатывало от мелких “скачков”
+let isOpen = diff > 140;
 
-    // Когда футер в static — надо перемерить высоту/отступы
-    StickyFooter.measure();
+// Если сейчас не редактируем текст — считаем, что клавиатуры нет
+if (!editing) isOpen = false;
+
+// ВАЖНО: смена kbdOpen (fixed↔static футера) может “подбрасывать” прокрутку.
+// Поэтому сохраняем позицию и восстанавливаем при изменении состояния.
+const x = window.scrollX;
+const y = window.scrollY;
+
+const changed = (__kbdOpenPrev !== null) && (isOpen !== __kbdOpenPrev);
+__kbdOpenPrev = isOpen;
+
+document.body.classList.toggle("kbdOpen", isOpen);
+
+// Когда футер в static — надо перемерить высоту/отступы
+StickyFooter.measure();
+
+if (changed) {
+  // Если пользователь только что тапнул (пытается перейти в другое поле) — не вмешиваемся скроллом,
+  // иначе первый тап “съедается”.
+  if (Date.now() - __lastUserPointerTs < 250) return;
+
+  requestAnimationFrame(() => {
+    if (Date.now() - __lastUserPointerTs < 250) return;
+    window.scrollTo(x, y);
+  });
+}
   }
 
   if (window.visualViewport) {
@@ -8037,8 +8094,97 @@ function initRulesEngine(cfg) {
     });
   }
 
+  let __renderPrevStepId = null;
+  // ===== Scroll keeper (fix: page jumps to top on step3 re-render) =====
+let __renderKeep = { stepId: null, x: 0, y: 0, key: null, top: null, ts: 0 };
+
+function __captureRenderKeep() {
+  const st = Store.get();
+  const ae = document.activeElement;
+
+  const snap = {
+    stepId: st.stepId,
+    x: window.scrollX,
+    y: window.scrollY,
+    key: (ae && ae.getAttribute) ? (ae.getAttribute('data-fid') || ae.id || ae.name || null) : null,
+    top: (ae && ae.getBoundingClientRect) ? ae.getBoundingClientRect().top : null,
+    ptrTs: __lastUserPointerTs,
+    ts: Date.now()
+  };
+
+  // сохраняем как “последний слепок”
+  __renderKeep.stepId = snap.stepId;
+  __renderKeep.x = snap.x;
+  __renderKeep.y = snap.y;
+  __renderKeep.key = snap.key;
+  __renderKeep.top = snap.top;
+  __renderKeep.ptrTs = snap.ptrTs;
+  __renderKeep.ts = snap.ts;
+
+  return snap;
+}
+
+function __restoreRenderKeep(prev) {
+  if (!prev) return;
+  const st = Store.get();
+  // Восстанавливаем только если остались на том же шаге
+  if (!prev.stepId || st.stepId !== prev.stepId) return;
+
+  // Синхронно вернём скролл ТОЛЬКО если он реально изменился.
+  const dx = Math.abs(window.scrollX - prev.x);
+  const dy = Math.abs(window.scrollY - prev.y);
+  if (dx > 1 || dy > 1) window.scrollTo(prev.x, prev.y);
+
+  // Доп. подстраховка нужна в основном на мобильных, где браузер может “допрыгнуть” после layout.
+  const isTouchLike = (navigator.maxTouchPoints > 0) || (window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
+  if (!isTouchLike) return;
+
+  const baseTs = prev.ts || 0;
+  requestAnimationFrame(() => {
+    // если браузер “допрыгнул” после layout — вернём назад
+    const dx2 = Math.abs(window.scrollX - prev.x);
+    const dy2 = Math.abs(window.scrollY - prev.y);
+    if (dx2 <= 1 && dy2 <= 1) return;
+
+    // если пользователь уже начал новый тап/клик — не вмешиваемся (иначе “съедим” клик)
+    if (__lastUserPointerTs > baseTs) return;
+
+    window.scrollTo(prev.x, prev.y);
+  });
+}
+
+function __applyPendingFocusAfterRender() {
+  const p = __pendingFocus;
+  if (!p) return;
+
+  // Если прошло слишком много времени — игнорируем.
+  if (Date.now() - p.ts > 350) { __pendingFocus = null; return; }
+
+  __pendingFocus = null;
+
+  let el = null;
+  try {
+    if (p.key && String(p.key).startsWith("step3:")) {
+      const esc = (window.CSS && CSS.escape) ? CSS.escape(p.key) : p.key;
+      el = document.querySelector('[data-fid="' + esc + '"]');
+    } else if (p.key) {
+      el = document.getElementById(p.key);
+      if (!el) {
+        const esc = (window.CSS && CSS.escape) ? CSS.escape(p.key) : p.key;
+        el = document.querySelector('[name="' + esc + '"]');
+      }
+    }
+  } catch {}
+
+  if (el && typeof el.focus === "function") {
+    try { el.focus({ preventScroll: true }); }
+    catch { try { el.focus(); } catch {} }
+  }
+}
+
   function render() {
     const st = Store.get();
+    const __prevKeep = __captureRenderKeep();
     const screen = $("screen");
     screen.replaceChildren();
 
@@ -8073,6 +8219,7 @@ function initRulesEngine(cfg) {
       screen.appendChild(el("div", { class:"muted", style:"margin-top:10px;" , text:
         "Подсказка: файл выбирается через кнопку вверху справа. Сеть не используется."
       }));
+      __renderPrevStepId = null;
       return;
     }
 
@@ -8103,6 +8250,15 @@ function initRulesEngine(cfg) {
   if (tgtIdx <= curIdx) {
     Store.update(d => { d.stepId = s.id; });
     refreshStepperAvailability();
+    // --- восстановление прокрутки ---
+const curStepId = Store.get().stepId;
+const sameStep = (prevStepId && curStepId === prevStepId);
+__renderPrevStepId = curStepId;
+
+requestAnimationFrame(() => {
+  if (sameStep) window.scrollTo(x, y);
+  else window.scrollTo(0, 0);
+});
     return;
   }
 
@@ -8141,6 +8297,9 @@ function initRulesEngine(cfg) {
     else if (step.id === "step4") renderStep4(screen, cfg, st);
     else renderUnknownStep(screen, step);
     refreshStepperAvailability();
+    // Restore scroll position to avoid “jump to top” after selecting values
+__restoreRenderKeep(__prevKeep);
+__applyPendingFocusAfterRender();
   }
 
   function navButtons({ canPrev=true, canNext=true, nextDisabled=false, onPrev, onNext, nextText="Далее" }) {
@@ -8213,17 +8372,7 @@ function initRulesEngine(cfg) {
       const stNow = Store.get();
       const missing = step1MissingIds(stNow.form);
 
-      if (nextBtn) nextBtn.disabled = missing.length > 0;
-
-      if (noteEl) {
-        if (missing.length) {
-          noteEl.className = "err";
-          noteEl.textContent = `Не заполнены обязательные поля: ${missing.join(", ")}`;
-        } else {
-          noteEl.className = "ok";
-          noteEl.textContent = "Все обязательные поля заполнены.";
-        }
-      }
+      if (nextBtn) nextBtn.disabled = false;
 
       // Обновляем debug без перерендера всего экрана
       $("debugPre").textContent = JSON.stringify({
@@ -8353,10 +8502,6 @@ function initRulesEngine(cfg) {
       }
     }
 
-    // live note
-    noteEl = el("div", { style:"margin-top:10px;" });
-    root.appendChild(noteEl);
-
     // actions (без disabled="false" ловушки)
 nextBtn = el("button", {
       type:"button",
@@ -8371,6 +8516,197 @@ nextBtn = el("button", {
     refreshStep1Ui();
   }
 
+// ===============================
+// Completeness helpers for damage_items
+// ===============================
+// --- global helpers for choice_or_other_object ---
+function getChoice(v) {
+  if (v == null) return "";
+  if (typeof v === "object" && !Array.isArray(v)) {
+    // основной кейс (как в твоем state_schema.other_object_keys)
+    if (Object.prototype.hasOwnProperty.call(v, "choice")) return String(v.choice ?? "");
+    // запасные варианты (на случай старых/других форматов)
+    if (Object.prototype.hasOwnProperty.call(v, "Choice")) return String(v.Choice ?? "");
+    if (Object.prototype.hasOwnProperty.call(v, "choice_value")) return String(v.choice_value ?? "");
+    return "";
+  }
+  return String(v);
+}
+
+function getOther(v) {
+  if (v == null) return "";
+  if (typeof v === "object" && !Array.isArray(v)) {
+    if (Object.prototype.hasOwnProperty.call(v, "other")) return String(v.other ?? "");
+    if (Object.prototype.hasOwnProperty.call(v, "Other")) return String(v.Other ?? "");
+    if (Object.prototype.hasOwnProperty.call(v, "other_value")) return String(v.other_value ?? "");
+  }
+  return "";
+}
+// --- end global helpers ---
+function __matchDamageTemplate(cfg, item, F_CAT, F_EL, F_SUB) {
+  const cat = getChoice(item?.[F_CAT]);
+  const elv = getChoice(item?.[F_EL]);
+  const sub = getChoice(item?.[F_SUB]);
+
+  for (const t of (cfg?.inventory?.damage_item?.templates || [])) {
+    const w = t?.when || {};
+
+    if (w.category && String(w.category) !== cat) continue;
+
+    if (w.element) {
+      if (String(w.element) !== elv) continue;
+    } else if (Array.isArray(w.element_in)) {
+      if (!w.element_in.map(String).includes(elv)) continue;
+    }
+
+    if (w.subelement) {
+      if (!sub) continue;
+      if (String(w.subelement) !== sub) continue;
+    } else if (Array.isArray(w.subelement_in)) {
+      if (!sub) continue;
+      if (!w.subelement_in.map(String).includes(sub)) continue;
+    }
+
+    return t;
+  }
+  return null;
+}
+
+function computeDamageItemMissing(cfg, item) {
+  const fieldsById = indexFieldsById(cfg);
+  const sel = cfg?.inventory?.damage_item?.selectors;
+  if (!sel?.category?.field_id || !sel?.element?.field_id || !sel?.subelement?.field_id) {
+    return ["__selectors_missing__"];
+  }
+
+  const F_CAT = sel.category.field_id;
+  const F_EL  = sel.element.field_id;
+  const F_SUB = sel.subelement.field_id;
+
+  const miss = [];
+
+  const catChoice = getChoice(item?.[F_CAT]);
+  const elChoice  = getChoice(item?.[F_EL]);
+  const subChoice = getChoice(item?.[F_SUB]);
+
+  // показываем "Элемент" только если для выбранной категории есть словарь
+  const elDictId = catChoice ? (sel?.element?.dictionary_by_category?.[catChoice] || null) : null;
+  const showElement = !!elDictId;
+
+  // показываем "Подэлемент" только если есть словарь по category|element
+  const subDictId = (catChoice && showElement && elChoice)
+    ? (sel?.subelement?.dictionary_by_category_element?.[`${catChoice}|${elChoice}`] || null)
+    : null;
+  const showSubelement = !!subDictId;
+
+  // runtime (visible/required overrides)
+  let runtime = { fields:{} };
+  try {
+    if (__rulesEngine) {
+      const out = __rulesEngine.applyRules({ prevItem: item, nextItem: item });
+      runtime = out.runtime || runtime;
+    }
+  } catch (e) { /* ignore */ }
+
+  const rtFor = (fid) => (runtime?.fields?.[fid] || {});
+  const isVisible = (fid) => (rtFor(fid).visible === false) ? false : true;
+
+  const tmpl = __matchDamageTemplate(cfg, item, F_CAT, F_EL, F_SUB);
+  const tmplFields = tmpl?.fields || [];
+  const tmplFieldById = new Map(tmplFields.map(tf => [tf.field_id, tf]));
+
+  const getFinalRequired = (fid) => {
+    const rt = rtFor(fid);
+    if (typeof rt.required === "boolean") return rt.required;
+    const tf = tmplFieldById.get(fid);
+    if (typeof tf?.required === "boolean") return tf.required;
+    const def = fieldsById.get(fid);
+    return !!def?.required;
+  };
+
+  const isFilled = (fid, v, def) => {
+    if (!isVisible(fid)) return true;
+
+    if (def?.type === "group_xy") {
+      const o = (v && typeof v === "object") ? v : {};
+      const xOk = typeof o.x === "number" && !Number.isNaN(o.x);
+      const yOk = typeof o.y === "number" && !Number.isNaN(o.y);
+      return xOk && yOk;
+    }
+    if (def?.type === "group_xyz") {
+      const o = (v && typeof v === "object") ? v : {};
+      const xOk = typeof o.x === "number" && !Number.isNaN(o.x);
+      const yOk = typeof o.y === "number" && !Number.isNaN(o.y);
+      const zOk = typeof o.z === "number" && !Number.isNaN(o.z);
+      return xOk && yOk && zOk;
+    }
+    if (def?.type === "select") {
+      const choice = getChoice(v);
+      if (!choice) return false;
+      if (def.allow_other_choice && choice === String(def.other_choice_value || "Иное")) {
+        return !!getOther(v).trim();
+      }
+      return true;
+    }
+    // фотки (как у тебя в step3)
+    if (fid === "f_photos") {
+      const arr = Array.isArray(v) ? v : [];
+      return arr.length > 0;
+    }
+    if (def?.type === "number") {
+      return typeof v === "number" && !Number.isNaN(v);
+    }
+    return !!String(v ?? "").trim();
+  };
+
+  // selectors required
+  if (!catChoice) miss.push(F_CAT);
+  if (showElement && !elChoice) miss.push(F_EL);
+
+  // subelement required только если он показан И он required в шаблоне
+  if (showSubelement) {
+    const tfSub = tmplFieldById.get(F_SUB);
+    const subReq = (typeof tfSub?.required === "boolean") ? tfSub.required : false;
+    if (subReq) {
+      if (!subChoice) miss.push(F_SUB);
+      else {
+        const defSub = fieldsById.get(F_SUB);
+        if (defSub?.allow_other_choice && subChoice === String(defSub.other_choice_value || "Иное")) {
+          if (!getOther(item?.[F_SUB]).trim()) miss.push(F_SUB);
+        }
+      }
+    }
+  }
+
+  // template fields required + visible
+  for (const tf of tmplFields) {
+    const fid = tf.field_id;
+    if (fid === F_CAT || fid === F_EL) continue;
+    if (fid === F_SUB) continue; // subelement уже учли выше
+    if (!isVisible(fid)) continue;
+
+    const def = fieldsById.get(fid);
+    if (!def) continue;
+
+    const req = getFinalRequired(fid);
+    if (!req) continue;
+
+    const v = item?.[fid];
+    if (!isFilled(fid, v, def)) miss.push(fid);
+  }
+
+  return miss;
+}
+
+function isDamageItemComplete(cfg, item) {
+  return computeDamageItemMissing(cfg, item).length === 0;
+}
+function hasAnyCompleteDamage(cfg, items) {
+  return (items || []).some(it => isDamageItemComplete(cfg, it));
+}
+function hasAnyIncompleteDamage(cfg, items) {
+  return (items || []).some(it => computeDamageItemMissing(cfg, it).length > 0);
+}
   // ===============================
   // Step2 (список повреждений)
   // ===============================
@@ -8382,29 +8718,53 @@ nextBtn = el("button", {
     if (!st.damage_items.length) {
       list.appendChild(el("div", { class:"muted", text:"Пока нет повреждений." }));
     } else {
-      st.damage_items.forEach((it, idx) => {
-        const left = el("div", {}, [
-          el("div", { text: `Повреждение ${idx + 1}` , style:"font-weight:700;" }),
-        ]);
+      const fieldsById = indexFieldsById(cfg);
 
-        const btns = el("div", { class:"row" }, [
-          el("button", {
-            type:"button",
-            text:"Редактировать",
-            onclick: () => Store.update(d => { d.current_damage_index = idx; d.stepId = "step3"; })
-          }),
-          el("button", {
-            type:"button",
-            text:"Удалить",
-            onclick: () => Store.update(d => {
-              d.damage_items.splice(idx, 1);
-              if (d.current_damage_index === idx) d.current_damage_index = null;
-            })
-          }),
-        ]);
+let anyIncomplete = false;
 
-        list.appendChild(el("div", { class:"card item" }, [left, btns]));
-      });
+st.damage_items.forEach((it, idx) => {
+  const miss = computeDamageItemMissing(cfg, it);
+  const incomplete = miss.length > 0;
+  if (incomplete) anyIncomplete = true;
+
+  const leftKids = [
+    el("div", { text: `Повреждение ${idx + 1}`, style:"font-weight:700;" })
+  ];
+
+  if (incomplete) {
+    // короткая подсказка + что именно не заполнено
+    const labels = miss
+      .filter(fid => !String(fid).startsWith("__"))
+      .map(fid => fieldsById.get(fid)?.label || fid);
+
+    leftKids.push(el("div", {
+      class:"incompleteHint",
+      text: labels.length
+        ? ("Не заполнено до конца: " + labels.join(", "))
+        : "Не заполнено до конца — открой и закончи."
+    }));
+  }
+
+  const left = el("div", {}, leftKids);
+
+  const btns = el("div", { class:"row" }, [
+    el("button", {
+      type:"button",
+      text:"Редактировать",
+      onclick: () => Store.update(d => { d.current_damage_index = idx; d.stepId = "step3"; })
+    }),
+    el("button", {
+      type:"button",
+      text:"Удалить",
+      onclick: () => Store.update(d => {
+        d.damage_items.splice(idx, 1);
+        if (d.current_damage_index === idx) d.current_damage_index = null;
+      })
+    }),
+  ]);
+
+  list.appendChild(el("div", { class:"card item" + (incomplete ? " incomplete" : "") }, [left, btns]));
+}); 
     }
 
     root.appendChild(el("div", { class:"actions" }, [
@@ -8413,23 +8773,29 @@ nextBtn = el("button", {
         class:"primary",
         text:"＋ Добавить повреждение",
         onclick: () => Store.update(d => {
-          d.damage_items.push({});
-          d.current_damage_index = d.damage_items.length - 1;
-          d.stepId = "step3";
-        })
+  if (!Array.isArray(d.damage_items)) d.damage_items = [];
+  d.damage_items.push({});
+  d.current_damage_index = d.damage_items.length - 1;
+  d.stepId = "step2";
+})
       }),
     ]));
 
     root.appendChild(list);
 
-    root.appendChild(navButtons({
-      canPrev:true,
-      canNext:true,
-      nextDisabled:false,
-      onPrev: () => goPrev(cfg, "step2"),
-      onNext: () => goNext(cfg, "step2"),
-      nextText: "Далее → Добавление повреждения"
-    }));
+    const nextBlocked = (st.damage_items.length === 0) || hasAnyIncompleteDamage(cfg, st.damage_items);
+
+root.appendChild(navButtons({
+  canPrev:true,
+  canNext:true,
+  nextDisabled: nextBlocked,
+  onPrev: () => goPrev(cfg, "step2"),
+  onNext: () => goNext(cfg, "step2"),
+  nextText: "Далее → Финализация"
+}));
+
+StepGuards.canNextByStepId.step2 = !nextBlocked;
+refreshStepperAvailability();
   }
 
 
@@ -8442,7 +8808,16 @@ nextBtn = el("button", {
     root.appendChild(navButtons({
       canPrev:true, canNext:true, nextDisabled:false,
       onPrev: () => goPrev(cfg, "step3"),
-      onNext: () => goNext(cfg, "step3"),
+      onNext: () => {
+  const missing = computeMissing();
+  if (missing.length) {
+    setStatus("Сначала заполни обязательные поля.", "err");
+    UIValidation.markAttempt("step3", idx);
+    refreshStep3Ui();
+    return;
+  }
+  goNext(cfg, "step3");
+},
       nextText: "Далее"
     }));
     return;
@@ -8541,22 +8916,42 @@ if (specialsRaw.length) {
     return map?.[key] || null;
   };
 
-  const idx = st.current_damage_index;
-  const item = (idx != null && st.damage_items[idx]) ? st.damage_items[idx] : null;
+  let idx = st.current_damage_index;
 
-  root.appendChild(el("div", { text:"Шаг 2: Добавление повреждения", style:"font-weight:800; font-size:16px;" }));
+// нормализуем idx (на всякий случай)
+if (typeof idx === "string" && idx.trim() !== "" && Number.isFinite(Number(idx))) idx = Number(idx);
+if (!(typeof idx === "number" && idx >= 0 && idx < (st.damage_items?.length || 0))) idx = null;
 
-
-  if (idx == null || !item) {
-    root.appendChild(el("div", { class:"err", text:"Сейчас не выбрано повреждение. Вернись на Шаг 2 и нажми “Редактировать” или “＋ Добавить повреждение”." }));
-    root.appendChild(navButtons({
-      canPrev:true, canNext:true, nextDisabled:false,
-      onPrev: () => goPrev(cfg, "step3"),
-      onNext: () => goNext(cfg, "step3"),
-      nextText: "Далее"
-    }));
-    return;
+// Если индекс не выбран / невалиден — выбираем автоматически или создаём новое повреждение
+if (idx == null) {
+  // если массива нет — заведём
+  if (!Array.isArray(st.damage_items)) {
+    Store.update(d => { d.damage_items = []; d.current_damage_index = null; }, { skipRender:true });
+    st = Store.get();
   }
+
+  if (st.damage_items.length === 0) {
+    // нет ни одного — создаём первое
+    Store.update(d => {
+      d.damage_items.push({});
+      d.current_damage_index = 0;
+      d.stepId = "step3";
+    }, { skipRender:true });
+  } else {
+    // есть повреждения — открываем последнее
+    Store.update(d => {
+      d.current_damage_index = d.damage_items.length - 1;
+      d.stepId = "step3";
+    }, { skipRender:true });
+  }
+
+  st = Store.get();
+  idx = st.current_damage_index;
+}
+
+const item = st.damage_items[idx] || {};
+
+root.appendChild(el("div", { text:"Шаг 2: Добавление повреждения", style:"font-weight:800; font-size:16px;" }));
 
   // rules-engine health
   if (!__rulesEngine) {
@@ -8640,7 +9035,7 @@ const showSubelement = !!subDictId; // как и было: только если
     ]));
 
     const opts = dictId ? buildOrderedValues(dictId) : [];
-    const select = el("select", { disabled: !!disabled });
+    const select = el("select", { disabled: !!disabled, "data-fid": `step3:${idx}:${fid}` });
 
     // empty
     select.appendChild(el("option", { value:"", text:"— выбери —" }));
@@ -8668,7 +9063,7 @@ const showSubelement = !!subDictId; // как и было: только если
         return;
       }
       if (!otherInput) {
-        otherInput = el("input", { type:"text", value: getOther(vNow) || "", placeholder:"Укажи своё значение (Иное)" });
+        otherInput = el("input", { type:"text", value: getOther(vNow) || "", placeholder:"Укажи своё значение (Иное)", "data-fid": `step3:${idx}:${fid}:other` });
         otherInput.addEventListener("input", () => {
           const valText = otherInput.value;
           Store.update(d => {
@@ -8998,19 +9393,16 @@ if (showElement && !e) miss.push(F_EL);
   const refreshStep3Ui = () => {
     const missing = computeMissing();
 
-    if (nextBtn) nextBtn.disabled = missing.length > 0;
+    const stNow2 = Store.get();
+const anyComplete = hasAnyCompleteDamage(cfg, stNow2.damage_items);
 
-    if (noteEl) {
-      if (missing.length) {
-        const labels = missing.map(fid => fieldsById.get(fid)?.label || fid);
-        noteEl.className = "err";
-        noteEl.textContent = "Не заполнены обязательные поля: " + labels.join(", ");
-      } else {
-        noteEl.className = "ok";
-        noteEl.textContent = "Все обязательные поля заполнены.";
-      }
-    }
-    StepGuards.canNextByStepId.step3 = (missing.length === 0);
+// Правило: можно идти дальше, если
+// 1) текущее повреждение полностью заполнено, ИЛИ
+// 2) уже есть хотя бы одно полностью заполненное повреждение (а текущее может быть черновиком)
+const canProceed = (missing.length === 0) || anyComplete;
+
+if (nextBtn) nextBtn.disabled = !canProceed;
+StepGuards.canNextByStepId.step3 = canProceed; 
     refreshStepperAvailability();
 
     refreshDebugOnly();
@@ -9075,7 +9467,7 @@ if (showElement && !e) miss.push(F_EL);
       ? el("label", {}, [document.createTextNode(def.label), document.createTextNode(" "), starEl])
       : el("label", { text: def.label });
     fieldsCard.appendChild(labelEl);
-    const inp = el("input", { type:"text", value: (Store.get().damage_items[idx]?.[fid] ?? "") });
+    const inp = el("input", { type:"text", value: (Store.get().damage_items[idx]?.[fid] ?? ""), "data-fid": `step3:${idx}:${fid}` });
     inp.addEventListener("input", () => setValueNoRender(fid, inp.value));
     inp.addEventListener("change", () => {
       commitValueWithRules(it => {
@@ -9100,7 +9492,7 @@ if (showElement && !e) miss.push(F_EL);
       ? el("label", {}, [document.createTextNode(def.label), document.createTextNode(" "), starEl])
       : el("label", { text: def.label });
     fieldsCard.appendChild(labelEl);
-    const ta = el("textarea", {});
+    const ta = el("textarea", { "data-fid": `step3:${idx}:${fid}` });
     ta.value = (Store.get().damage_items[idx]?.[fid] ?? "");
     ta.addEventListener("input", () => setValueNoRender(fid, ta.value));
     ta.addEventListener("change", () => {
@@ -9126,7 +9518,7 @@ if (showElement && !e) miss.push(F_EL);
       ? el("label", {}, [document.createTextNode(def.label), document.createTextNode(" "), starEl])
       : el("label", { text: def.label });
     fieldsCard.appendChild(labelEl);
-    const inp = el("input", { type:"date", value: (Store.get().damage_items[idx]?.[fid] ?? "") });
+    const inp = el("input", { type:"date", value: (Store.get().damage_items[idx]?.[fid] ?? ""), "data-fid": `step3:${idx}:${fid}` });
     inp.addEventListener("change", () => {
       const v = inp.value || "";
       commitValueWithRules(it => {
@@ -9151,7 +9543,7 @@ if (showElement && !e) miss.push(F_EL);
       : el("label", { text: def.label });
     fieldsCard.appendChild(labelEl);
     const cur = Store.get().damage_items[idx]?.[fid];
-    const inp = el("input", { type:"number", value: (typeof cur === "number" ? String(cur) : "") });
+    const inp = el("input", { type:"number", value: (typeof cur === "number" ? String(cur) : ""), "data-fid": `step3:${idx}:${fid}` });
     inp.addEventListener("input", () => {
       const s = inp.value;
       if (!s.trim()) { setValueNoRender(fid, undefined); return; }
@@ -9186,7 +9578,7 @@ if (showElement && !e) miss.push(F_EL);
       : el("label", { text: def.label });
     fieldsCard.appendChild(labelEl);
 
-    const select = el("select", { disabled: !dictId });
+    const select = el("select", { disabled: !dictId, "data-fid": `step3:${idx}:${fid}` });
     select.appendChild(el("option", { value:"", text:"— выбери —" }));
 
     const opts = dictId ? buildOrderedValues(dictId) : [];
@@ -9562,10 +9954,6 @@ btn.addEventListener("click", () => {
 
   root.appendChild(fieldsCard);
 
-  // note (required missing)
-  noteEl = el("div", { style:"margin-top:10px;" });
-  root.appendChild(noteEl);
-
   // actions: добавить новое повреждение, не уходя на Step2
   const addMoreRow = el("div", { class:"actions" }, [
     el("button", {
@@ -9587,7 +9975,21 @@ btn.addEventListener("click", () => {
     canNext:true,
     nextDisabled: true, // обновим ниже
     onPrev: () => goPrev(cfg, "step3"),
-    onNext: () => goNext(cfg, "step3"),
+    onNext: () => {
+  const missing = computeMissing();
+  const stNow2 = Store.get();
+  const anyComplete = hasAnyCompleteDamage(cfg, stNow2.damage_items);
+
+  // Если НЕТ ни одного готового повреждения и текущее не заполнено — не пускаем.
+  if (!anyComplete && missing.length) {
+    UIValidation.markAttempt("step3", idx);
+    refreshStep3Ui();
+    return;
+  }
+
+  // Иначе можно перейти к списку (даже если текущее — черновик)
+  goNext(cfg, "step3");
+},
     nextText: "Далее"
   });
 
